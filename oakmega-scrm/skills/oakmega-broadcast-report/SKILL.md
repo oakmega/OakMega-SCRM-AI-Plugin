@@ -3,12 +3,9 @@ name: oakmega-broadcast-report
 user-invocable: false
 description: >-
   OakMega 發文成效 HTML 報告的規格文件（報告結構、欄位定義、HTML 建置規範）。
-  供 broadcast-report agent 讀取，不獨立執行。
 ---
 
 # OakMega 發文成效報告 — HTML 規格
-
-供 `broadcast-report` agent 產出 self-contained HTML 報告時參照。
 
 ## 資料欄位
 
@@ -33,7 +30,7 @@ description: >-
 
 只取 `status === 'published'` 的項目做分析；草稿在明細表裡標示但不計入 KPI。
 
-`line_broadcast_insight`、`six_hour_interaction` 與 `line_message_insight` 是由 `broadcast-report` agent 逐筆呼叫 `broadcast get-statistics` 補上的（`broadcast search` 不再回傳 `line_broadcast_insight`），未成功取得統計數據的發文，該筆的這些欄位視為缺值（KPI 加總時跳過，明細表對應欄位顯示「—」）。
+`line_broadcast_insight`、`six_hour_interaction` 與 `line_message_insight` 是由逐筆呼叫 `broadcast get-statistics` 補上的，未成功取得統計數據的發文，該筆的這些欄位視為缺值（KPI 加總時跳過，明細表對應欄位顯示「—」）。
 
 ## 報告結構
 

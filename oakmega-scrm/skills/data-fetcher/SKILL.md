@@ -3,7 +3,6 @@ name: data-fetcher
 user-invocable: false
 description: >-
   OakMega SCRM 統一資料層。接受任意資料請求，呼叫 CLI 指令，永遠回傳 raw JSON。
-  供報告層 agent 使用，不直接面向使用者。
 ---
 
 # data-fetcher
@@ -130,7 +129,7 @@ activity-log list-deeplink-clicks    --member-ids <ids> [--days <1-60>]
 ## 安全規則
 
 - 永遠不要請使用者貼 API key。
-- CLI 從 `~/.config/oakmega-scrm/config.json` 讀取憑證，此 agent 不需接觸。
+- CLI 從 `~/.config/oakmega-scrm/config.json` 讀取憑證，不需接觸。
 
 ## 行為限制
 

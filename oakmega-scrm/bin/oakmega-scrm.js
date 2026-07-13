@@ -543,6 +543,52 @@ async function cmdBroadcastSearch(argv) {
   process.exit(0);
 }
 
+// ---------- 子指令：broadcast get-statistics ----------
+
+async function cmdBroadcastGetStatistics(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let broadcastId = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--broadcast-id' && argv[i + 1]) broadcastId = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if (!broadcastId) {
+    console.error('缺少 --broadcast-id <id>');
+    process.exit(1);
+  }
+
+  const baseUrl = getBaseUrl();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/broadcast/get-broadcast-statistics/${broadcastId}/`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
 // ---------- 子指令：member get-basic-info ----------
 
 async function cmdMemberGetBasicInfo(argv) {
@@ -1162,6 +1208,8 @@ function printUsage() {
   ── Broadcast ──
   oakmega-scrm broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD>  搜尋發文
                         [--name <關鍵字>] [--limit <n>] [--workspace-id <id>]
+  oakmega-scrm broadcast get-statistics --broadcast-id <id>                   取得單一發文統計（6 小時互動 / 影片播放）
+                        [--workspace-id <id>]
 
   ── Chatbot ──
   oakmega-scrm chatbot list-recent-triggered [--days <1-7>]                          workspace 最近 N 日 chatbot 排行（預設 7 日）
@@ -1232,6 +1280,7 @@ function main() {
   if (a === 'member' && b === 'list-recent-chatbot-triggered') return cmdMemberListRecentChatbotTriggered(argv.slice(2));
   if (a === 'member' && b === 'list-recent-deeplink-clicked') return cmdMemberListRecentDeeplinkClicked(argv.slice(2));
   if (a === 'broadcast' && b === 'search') return cmdBroadcastSearch(argv.slice(2));
+  if (a === 'broadcast' && b === 'get-statistics') return cmdBroadcastGetStatistics(argv.slice(2));
   if (a === 'chatbot' && b === 'list-recent-triggered') return cmdChatbotListRecentTriggered(argv.slice(2));
   if (a === 'chatbot' && b === 'list-member-triggered') return cmdChatbotListMemberTriggered(argv.slice(2));
   if (a === 'chatbot' && b === 'list-members-triggered-batch') return cmdChatbotListMembersTriggeredBatch(argv.slice(2));

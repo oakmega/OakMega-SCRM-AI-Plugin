@@ -1,5 +1,6 @@
 ---
 name: data-fetcher
+user-invocable: false
 description: >-
   OakMega SCRM 統一資料層。接受任意資料請求，呼叫 CLI 指令，永遠回傳 raw JSON。
   供報告層 agent 使用，不直接面向使用者。
@@ -69,6 +70,9 @@ tag list-members-batch --member-ids <id1,id2,...> [--workspace-id <id>]
 
 ```bash
 broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD> [--name <關鍵字>] [--limit <n>]
+
+# 單一發文完整統計（開封率 / 6 小時互動 / 影片播放）
+broadcast get-statistics --broadcast-id <id>
 ```
 
 ### Chatbot
@@ -127,3 +131,11 @@ activity-log list-deeplink-clicks    --member-ids <ids> [--days <1-60>]
 
 - 永遠不要請使用者貼 API key。
 - CLI 從 `~/.config/oakmega-scrm/config.json` 讀取憑證，此 agent 不需接觸。
+
+## 行為限制
+
+- **禁止分析原始碼**：任何情況下都不要讀取、檢視或分析 API/CLI 原始碼檔案（例如 `bin/oakmega-scrm.js` 或其他實作檔）來推敲指令、flags 或行為。所有可用指令與參數僅限本文件「可用指令一覽」所列，需要用什麼指令、flag 一律以此文件為準。
+- **超出範圍不查詢**：若使用者想要的資料對應不到本文件列出的任一指令，直接回報「此資料不在 data-fetcher 支援範圍內」，不要嘗試呼叫任何未列出的指令或去源碼裡找替代方法。
+- **錯誤代碼處理**：
+  - CLI 回傳 `401` 或 `403`：不要重試、不要換 workspace-id 或其他參數嘗試繞過，直接回報請使用者檢查 API Key 是否正確／有效，若確認無誤仍失敗，請聯絡 OakMega 窗口確認權限。
+  - CLI 回傳 `417`：直接回報請使用者修改查詢條件（例如調整 `--days`、`--limit`、日期範圍等），不要自行重試不同參數組合。

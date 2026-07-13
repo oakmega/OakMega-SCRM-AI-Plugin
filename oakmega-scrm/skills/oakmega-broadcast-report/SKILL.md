@@ -1,5 +1,6 @@
 ---
 name: oakmega-broadcast-report
+user-invocable: false
 description: >-
   OakMega 發文成效 HTML 報告的規格文件（報告結構、欄位定義、HTML 建置規範）。
   供 broadcast-report agent 讀取，不獨立執行。
@@ -26,9 +27,13 @@ description: >-
 | `six_hour_interaction.unique_interactors` | 6 小時互動人數 |
 | `six_hour_interaction.adds` | 6 小時新增好友 |
 | `six_hour_interaction.blocks` | 6 小時封鎖 |
+| `line_message_insight[].insight.unique_media_played` | 影片播放數（單一影片訊息） |
+| `line_message_insight[].insight.unique_media_played_100_percent_rate` | 影片完播率（0–1，單一影片訊息） |
 | `broadcaster` | 發送者 |
 
 只取 `status === 'published'` 的項目做分析；草稿在明細表裡標示但不計入 KPI。
+
+`line_broadcast_insight`、`six_hour_interaction` 與 `line_message_insight` 是由 `broadcast-report` agent 逐筆呼叫 `broadcast get-statistics` 補上的（`broadcast search` 不再回傳 `line_broadcast_insight`），未成功取得統計數據的發文，該筆的這些欄位視為缺值（KPI 加總時跳過，明細表對應欄位顯示「—」）。
 
 ## 報告結構
 
@@ -62,8 +67,20 @@ description: >-
 - top 10%（`sorted[n - ceil(n × 0.1)]` 閾值）→ `success-700 #006E17` 底色
 - bottom 10%（`sorted[ceil(n × 0.1) - 1]` 閾值）→ `error-50 #FFEDEA` 底色
 - 草稿列整列用 `gray-50` 底色，開封率欄顯示「草稿」
+- 統計數據缺值（`stats_fetch_failed`）的欄位顯示「—」
 
-### 03 建議
+### 03 影片播放數據
+
+只在至少一則發文的 `line_message_insight` 非空陣列時才產出此區塊；若沒有任何影片訊息，整節略過不顯示。
+
+表格，依 `broadcast_dt` 排序（最新在前）：
+
+| 發文名稱 | 播放數 | 完播率 |
+
+- 同一則發文有多個影片訊息時，`line_message_insight` 陣列中每一筆各自一列，發文名稱重複顯示
+- 完播率使用 `unique_media_played_100_percent_rate`，% 格式
+
+### 04 建議
 
 1–2 條建議，每條格式：
 ```

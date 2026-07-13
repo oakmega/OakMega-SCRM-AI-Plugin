@@ -1,5 +1,6 @@
 ---
 name: oakmega-orchestrator
+user-invocable: false
 description: >-
   OakMega SCRM 多任務分析協調器。接受自然語言請求，spawn 對應的報告 agent，
   累積摘要於 context，支援跨任務總結。

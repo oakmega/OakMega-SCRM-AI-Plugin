@@ -68,6 +68,7 @@ tag list-members-batch --member-ids <id1,id2,...> [--workspace-id <id>]
 ### Broadcast
 
 ```bash
+# 搜尋時間範圍內、名稱包含關鍵字的發文
 broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD> [--name <關鍵字>] [--limit <n>]
 
 # 單一發文完整統計（開封率 / 6 小時互動 / 影片播放）
@@ -126,6 +127,12 @@ activity-log list-deeplink-clicks    --member-ids <ids> [--days <1-60>]
 
 ---
 
+## 詳細規格（Request 參數 / Response 欄位）
+
+`reference/` 目錄下有每個指令對應的完整規格文件，檔名為 `<domain>-<action>.md`（例如 `member-get-basic-info.md`、`broadcast-get-statistics.md`）。
+
+**確定要呼叫某個指令後、執行 CLI 之前，一律先讀取對應的 `reference/<domain>-<action>.md`**，取得完整的參數規則與回傳欄位說明，再組出正確的 CLI 呼叫、或正確解讀回傳的 raw JSON。不要一次讀多份，只讀當下要用的那一份。
+
 ## 安全規則
 
 - 永遠不要請使用者貼 API key。
@@ -133,8 +140,14 @@ activity-log list-deeplink-clicks    --member-ids <ids> [--days <1-60>]
 
 ## 行為限制
 
-- **禁止分析原始碼**：任何情況下都不要讀取、檢視或分析 API/CLI 原始碼檔案（例如 `bin/oakmega-scrm.js` 或其他實作檔）來推敲指令、flags 或行為。所有可用指令與參數僅限本文件「可用指令一覽」所列，需要用什麼指令、flag 一律以此文件為準。
+- **禁止分析原始碼**：任何情況下都不要讀取、檢視或分析 API/CLI 原始碼檔案（例如 `bin/oakmega-scrm.js` 或其他實作檔）來推敲指令、flags 或行為。所有可用指令與參數僅限本文件「可用指令一覽」與 `reference/` 目錄所列，需要用什麼指令、flag、回傳欄位一律以這些文件為準。`reference/` 底下的文件是文件，不是原始碼，是允許且必須參考的權威來源；這些文件是一次性從後端 API 文件同步過來的靜態內容，執行任務時不需要、也不要去讀後端專案的原始碼或文件。
 - **超出範圍不查詢**：若使用者想要的資料對應不到本文件列出的任一指令，直接回報「此資料不在 data-fetcher 支援範圍內」，不要嘗試呼叫任何未列出的指令或去源碼裡找替代方法。
 - **錯誤代碼處理**：
   - CLI 回傳 `401` 或 `403`：不要重試、不要換 workspace-id 或其他參數嘗試繞過，直接回報請使用者檢查 API Key 是否正確／有效，若確認無誤仍失敗，請聯絡 OakMega 窗口確認權限。
   - CLI 回傳 `417`：直接回報請使用者修改查詢條件（例如調整 `--days`、`--limit`、日期範圍等），不要自行重試不同參數組合。
+- **跨指令通則**（詳細內容仍以個別 `reference/` 文件為準）：
+  - **Batch vs Single**：batch 指令的回傳用 `"results"`（複數 key，逐一標示每個 id 的結果），single 指令用 `"result"`（單數 key）。
+  - **`days` 型別差異**：single 指令的 `--days` 對應 query string，字串型別；batch 指令（`--member-ids`/`--*-ids`）的 `--days` 對應 request body，**int** 型別。
+  - **不存在的 id**：batch 指令對不屬於此 workspace 的 id，回傳該筆 `{"..._id": <id>, "error": "not_in_workspace"}`，不會拋 404。
+  - **日期格式**：所有時間欄位格式為 `"YYYY-MM-DD HH:MM:SS"`（台北時間，+08:00）。
+  - **Throttle**：list 類指令較嚴（5 次/分鐘/帳號），get / search 類較寬鬆（30 次/分鐘/帳號），短時間內大量呼叫可能被限流。

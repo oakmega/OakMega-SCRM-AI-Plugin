@@ -817,38 +817,18 @@ async function cmdActivityLogListTagChanges(argv) {
 
   let workspaceId = null;
   let memberId = null;
-  let memberIdsStr = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
-    else if (argv[i] === '--member-ids' && argv[i + 1]) memberIdsStr = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
   if (!workspaceId) workspaceId = getWorkspaceId();
   if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
-  if (!memberId && !memberIdsStr) { console.error('缺少 --member-id <id> 或 --member-ids <id1,id2,...>'); process.exit(1); }
+  if (!memberId) { console.error('缺少 --member-id <id>'); process.exit(1); }
 
   const baseUrl = getBaseUrl();
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
-
-  if (memberIdsStr) {
-    const ids = memberIdsStr.split(',').map((s) => s.trim()).filter(Boolean);
-    const results = [];
-    for (const id of ids) {
-      const url = `${baseUrl}/agent-tools/v3/${workspaceId}/activity-log/list-member-tag-changes/${id}/${params}`;
-      let res;
-      try { res = await apiRequest(url, key); } catch (err) { results.push({ workspace_member_id: Number(id), error: err.message }); continue; }
-      if (res.status === 404) { results.push({ workspace_member_id: Number(id), error: 'not_in_workspace' }); continue; }
-      if (res.status !== 200) { results.push({ workspace_member_id: Number(id), error: `http_${res.status}` }); continue; }
-      try {
-        const parsed = JSON.parse(res.body);
-        results.push({ workspace_member_id: Number(id), result: parsed.result });
-      } catch (_) { results.push({ workspace_member_id: Number(id), error: 'parse_error' }); }
-    }
-    console.log(JSON.stringify({ results }));
-    process.exit(0);
-  }
 
   const url = `${baseUrl}/agent-tools/v3/${workspaceId}/activity-log/list-member-tag-changes/${memberId}/${params}`;
   let result;
@@ -866,38 +846,18 @@ async function cmdActivityLogListChatbotTriggers(argv) {
 
   let workspaceId = null;
   let memberId = null;
-  let memberIdsStr = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
-    else if (argv[i] === '--member-ids' && argv[i + 1]) memberIdsStr = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
   if (!workspaceId) workspaceId = getWorkspaceId();
   if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
-  if (!memberId && !memberIdsStr) { console.error('缺少 --member-id <id> 或 --member-ids <id1,id2,...>'); process.exit(1); }
+  if (!memberId) { console.error('缺少 --member-id <id>'); process.exit(1); }
 
   const baseUrl = getBaseUrl();
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
-
-  if (memberIdsStr) {
-    const ids = memberIdsStr.split(',').map((s) => s.trim()).filter(Boolean);
-    const results = [];
-    for (const id of ids) {
-      const url = `${baseUrl}/agent-tools/v3/${workspaceId}/activity-log/list-member-chatbot-triggers/${id}/${params}`;
-      let res;
-      try { res = await apiRequest(url, key); } catch (err) { results.push({ workspace_member_id: Number(id), error: err.message }); continue; }
-      if (res.status === 404) { results.push({ workspace_member_id: Number(id), error: 'not_in_workspace' }); continue; }
-      if (res.status !== 200) { results.push({ workspace_member_id: Number(id), error: `http_${res.status}` }); continue; }
-      try {
-        const parsed = JSON.parse(res.body);
-        results.push({ workspace_member_id: Number(id), result: parsed.result });
-      } catch (_) { results.push({ workspace_member_id: Number(id), error: 'parse_error' }); }
-    }
-    console.log(JSON.stringify({ results }));
-    process.exit(0);
-  }
 
   const url = `${baseUrl}/agent-tools/v3/${workspaceId}/activity-log/list-member-chatbot-triggers/${memberId}/${params}`;
   let result;
@@ -915,38 +875,18 @@ async function cmdActivityLogListDeeplinkClicks(argv) {
 
   let workspaceId = null;
   let memberId = null;
-  let memberIdsStr = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
-    else if (argv[i] === '--member-ids' && argv[i + 1]) memberIdsStr = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
   if (!workspaceId) workspaceId = getWorkspaceId();
   if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
-  if (!memberId && !memberIdsStr) { console.error('缺少 --member-id <id> 或 --member-ids <id1,id2,...>'); process.exit(1); }
+  if (!memberId) { console.error('缺少 --member-id <id>'); process.exit(1); }
 
   const baseUrl = getBaseUrl();
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
-
-  if (memberIdsStr) {
-    const ids = memberIdsStr.split(',').map((s) => s.trim()).filter(Boolean);
-    const results = [];
-    for (const id of ids) {
-      const url = `${baseUrl}/agent-tools/v3/${workspaceId}/activity-log/list-member-deeplink-clicks/${id}/${params}`;
-      let res;
-      try { res = await apiRequest(url, key); } catch (err) { results.push({ workspace_member_id: Number(id), error: err.message }); continue; }
-      if (res.status === 404) { results.push({ workspace_member_id: Number(id), error: 'not_in_workspace' }); continue; }
-      if (res.status !== 200) { results.push({ workspace_member_id: Number(id), error: `http_${res.status}` }); continue; }
-      try {
-        const parsed = JSON.parse(res.body);
-        results.push({ workspace_member_id: Number(id), result: parsed.result });
-      } catch (_) { results.push({ workspace_member_id: Number(id), error: 'parse_error' }); }
-    }
-    console.log(JSON.stringify({ results }));
-    process.exit(0);
-  }
 
   const url = `${baseUrl}/agent-tools/v3/${workspaceId}/activity-log/list-member-deeplink-clicks/${memberId}/${params}`;
   let result;
@@ -1235,11 +1175,8 @@ function printUsage() {
 
   ── Activity Log ──
   oakmega-scrm activity-log list-tag-changes --member-id <id> [--days <1-60>]            標籤異動紀錄（預設 60 日）
-                        --member-ids <id1,id2,...>                                        批次查詢，輸出 {"results":[...]}
   oakmega-scrm activity-log list-chatbot-triggers --member-id <id> [--days <1-60>]       Chatbot 觸發紀錄（預設 60 日）
-                        --member-ids <id1,id2,...>                                        批次查詢
   oakmega-scrm activity-log list-deeplink-clicks --member-id <id> [--days <1-60>]        Deeplink 點擊紀錄（預設 60 日）
-                        --member-ids <id1,id2,...>                                        批次查詢
 
   所有指令均可加 [--workspace-id <id>] 覆蓋 config 中的預設 workspace ID。
 

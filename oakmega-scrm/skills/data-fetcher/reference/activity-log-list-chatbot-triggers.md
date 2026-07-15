@@ -6,16 +6,13 @@
 
 ```
 activity-log list-chatbot-triggers
-  --member-id <id>          # 與 --member-ids 二擇一，單一會員 workspace_member_id
-  --member-ids <id1,id2>    # 與 --member-id 二擇一，逗號分隔，批次查詢
-  --days <n>                 # [🔯 選填] 往回查詢天數，1~60，預設 60
+  --member-id <id>    # 必填，會員 workspace_member_id
+  --days <n>            # [🔯 選填] 往回查詢天數，1~60，預設 60
 ```
 
-某會員最近 N 日的 chatbot 觸發逐筆紀錄，依時間降冪。
+某會員最近 N 日的 chatbot 觸發逐筆紀錄，依時間降冪。對應後端 `GET .../activity-log/list-member-chatbot-triggers/{workspace_member_id}/`。無批次版本（後端沒有對應的 batch endpoint），CLI 與 API 保持 1:1。
 
-**單一查詢**（`--member-id`）對應後端 `GET .../activity-log/list-member-chatbot-triggers/{workspace_member_id}/`，回傳如下：
-
-### Response `200 OK`（單一）
+### Response `200 OK`
 
 ```json
 {
@@ -31,5 +28,3 @@ activity-log list-chatbot-triggers
 ```
 
 - 最多回傳 100 筆。
-
-**批次查詢**（`--member-ids`）由 CLI 對每個 id 呼叫上述單一 endpoint 並彙整，回傳 `{"results": [...]}`（複數 key），未在 `agent_tools_api.md` 找到對應的後端 batch endpoint，實際逐筆結構請以執行後的回傳為準，預期沿用其他 batch 指令的慣例（每筆含 `workspace_member_id` + `result` 或 `error: "not_in_workspace"`）。

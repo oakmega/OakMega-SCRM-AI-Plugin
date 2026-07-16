@@ -589,6 +589,211 @@ async function cmdBroadcastGetStatistics(argv) {
   process.exit(0);
 }
 
+// ---------- 子指令：statistics get-workspace-member-overview ----------
+
+async function cmdStatisticsGetWorkspaceMemberOverview(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+
+  const baseUrl = getBaseUrl();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-workspace-member-overview/`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-line-friend-count-series ----------
+
+async function cmdStatisticsGetLineFriendCountSeries(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-line-friend-count-series/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-active-member-count-series ----------
+
+async function cmdStatisticsGetActiveMemberCountSeries(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-active-member-count-series/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-member-interaction-count-series ----------
+
+async function cmdStatisticsGetMemberInteractionCountSeries(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-member-interaction-count-series/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
 // ---------- 子指令：member get-basic-info ----------
 
 async function cmdMemberGetBasicInfo(argv) {
@@ -1178,6 +1383,16 @@ function printUsage() {
   oakmega-scrm activity-log list-chatbot-triggers --member-id <id> [--days <1-60>]       Chatbot 觸發紀錄（預設 60 日）
   oakmega-scrm activity-log list-deeplink-clicks --member-id <id> [--days <1-60>]        Deeplink 點擊紀錄（預設 60 日）
 
+  ── Statistics ──
+  oakmega-scrm statistics get-workspace-member-overview                              workspace 會員/好友概況
+                        [--workspace-id <id>]
+  oakmega-scrm statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]   LINE 好友加入/封鎖逐日時序（預設近 30 天，最長 90 天）
+                        [--workspace-id <id>]
+  oakmega-scrm statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員數逐日時序（同上）
+                        [--workspace-id <id>]
+  oakmega-scrm statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動數逐日時序（同上）
+                        [--workspace-id <id>]
+
   所有指令均可加 [--workspace-id <id>] 覆蓋 config 中的預設 workspace ID。
 
 環境變數：
@@ -1229,6 +1444,10 @@ function main() {
   if (a === 'activity-log' && b === 'list-tag-changes') return cmdActivityLogListTagChanges(argv.slice(2));
   if (a === 'activity-log' && b === 'list-chatbot-triggers') return cmdActivityLogListChatbotTriggers(argv.slice(2));
   if (a === 'activity-log' && b === 'list-deeplink-clicks') return cmdActivityLogListDeeplinkClicks(argv.slice(2));
+  if (a === 'statistics' && b === 'get-workspace-member-overview') return cmdStatisticsGetWorkspaceMemberOverview(argv.slice(2));
+  if (a === 'statistics' && b === 'get-line-friend-count-series') return cmdStatisticsGetLineFriendCountSeries(argv.slice(2));
+  if (a === 'statistics' && b === 'get-active-member-count-series') return cmdStatisticsGetActiveMemberCountSeries(argv.slice(2));
+  if (a === 'statistics' && b === 'get-member-interaction-count-series') return cmdStatisticsGetMemberInteractionCountSeries(argv.slice(2));
 
   console.log(`未知指令：${a}`);
   printUsage();

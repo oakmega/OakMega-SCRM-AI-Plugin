@@ -125,6 +125,22 @@ activity-log list-chatbot-triggers  --member-id <id> [--days <1-60>]
 activity-log list-deeplink-clicks   --member-id <id> [--days <1-60>]
 ```
 
+### Statistics
+
+```bash
+# workspace 會員/好友概況 → reference/statistics-get-workspace-member-overview.md
+statistics get-workspace-member-overview [--workspace-id <id>]
+
+# LINE 好友加入/封鎖逐日時序（區間最長 90 天，預設近 30 天） → reference/statistics-get-line-friend-count-series.md
+statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+
+# 活躍會員數逐日時序（同上區間規則） → reference/statistics-get-active-member-count-series.md
+statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+
+# 會員互動數（訊息數/點擊數）逐日時序（同上區間規則） → reference/statistics-get-member-interaction-count-series.md
+statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+```
+
 ---
 
 ## API 呼叫順序與依賴

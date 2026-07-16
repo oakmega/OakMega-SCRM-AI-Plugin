@@ -1,5 +1,3 @@
-> 同步自 OakMega-SCRM-Back/ai_agent/docs/agent_tools_api.md（2026-07-14）
-
 ## `member list-recent-messaged`
 
 ### CLI

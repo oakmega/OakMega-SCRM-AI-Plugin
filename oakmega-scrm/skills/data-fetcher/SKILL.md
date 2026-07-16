@@ -2,7 +2,8 @@
 name: data-fetcher
 user-invocable: false
 description: >-
-  OakMega SCRM 統一資料層。接受任意資料請求，呼叫 CLI 指令，永遠回傳 raw JSON。
+  OakMega SCRM 統一資料層。查詢會員主檔、渠道綁定、標籤、發文成效、聊天機器人（chatbot）觸發紀錄、追蹤連結（deeplink）點擊紀錄、
+  客服對話紀錄、workspace 統計數據等資料，呼叫對應 CLI 指令並永遠回傳 raw JSON。當上層需要 OakMega SCRM 任何結構化資料時使用。
 ---
 
 # data-fetcher
@@ -36,16 +37,16 @@ params: { ... }
 # 搜尋會員 → reference/member-search.md
 member search --query <q> --search-by <name|workspace_member_id|uuid> [--workspace-id <id>]
 
-# 取得會員主表 → reference/member-get-basic-info.md
+# 查詢會員主表 → reference/member-get-basic-info.md
 member get-basic-info --member-id <id> [--workspace-id <id>]
 
-# 取得 LINE 渠道會員資訊（未綁定回 404）→ reference/member-get-channel-line.md
+# 查詢 LINE 渠道會員資訊（未綁定回 404）→ reference/member-get-channel-line.md
 member get-channel-line --member-id <id>
-# 取得 Facebook 渠道會員資訊（未綁定回 404 → reference/member-get-channel-fb.md
+# 查詢 Facebook 渠道會員資訊（未綁定回 404 → reference/member-get-channel-fb.md
 member get-channel-fb --member-id <id>
-# 取得 Instagram 渠道會員資訊（未綁定回 404）→ reference/member-get-channel-ig.md
+# 查詢 Instagram 渠道會員資訊（未綁定回 404）→ reference/member-get-channel-ig.md
 member get-channel-ig --member-id <id>
-# 取得 Whatsapp 渠道會員資訊（未綁定回 404）→ reference/member-get-channel-whatsapp.md
+# 查詢 Whatsapp 渠道會員資訊（未綁定回 404）→ reference/member-get-channel-whatsapp.md
 member get-channel-whatsapp --member-id <id>
 
 # 最近有訊息往來的會員（days: 1~7，預設 1） → reference/member-list-recent-messaged.md
@@ -151,21 +152,21 @@ statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-
 - `social_media_member_id`（`--social-media-member-id`/`--social-media-member-ids`）：會員在某個渠道的綁定身分 id，只有 `service-center` 系列指令需要，**不等於 `workspace_member_id`**。
 - `broadcast_id`（`--broadcast-id`）：只有 `broadcast get-statistics` 需要。
 
-### 取得 member-id
+### 查詢 member-id
 
-入口指令（不需任何前置 id，直接呼叫即可取得）：
+入口指令（不需任何前置 id，直接呼叫即可查詢）：
 `member search`、`member list-recent-messaged`、`member list-recent-chatbot-triggered`、`member list-recent-deeplink-clicked`（回傳每筆資料皆含 `workspace_member_id`）。
 
 需要先有 member-id 才能呼叫的指令：
 `member get-basic-info`、`member get-channel-line/fb/ig/whatsapp`、`tag list-member-tags`（批次：`tag list-members-batch`）、`chatbot list-member-triggered`（批次：`chatbot list-members-triggered-batch`）、`deeplink list-member-clicked`（批次：`deeplink list-members-clicked-batch`）、`activity-log list-tag-changes`／`list-chatbot-triggers`／`list-deeplink-clicks`。
 
-### 取得 social_media_member_id
+### 查詢 social_media_member_id
 
-入口：上述四個 member 入口指令回傳的 `channels[].social_media_member_id`；或先取得 member-id 後呼叫 `member get-channel-line/fb/ig/whatsapp`，回傳中也含 `social_media_member_id`。
+入口：上述四個 member 入口指令回傳的 `channels[].social_media_member_id`；或先查詢 member-id 後呼叫 `member get-channel-line/fb/ig/whatsapp`，回傳中也含 `social_media_member_id`。
 
 需要此 id 的指令：`service-center list-member-messages`（批次：`service-center list-members-messages-batch`）。
 
-### 取得 broadcast-id
+### 查詢 broadcast-id
 
 入口：`broadcast search` 回傳每筆的 `id`。
 
@@ -193,6 +194,7 @@ statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-
 
 - **禁止分析原始碼**：任何情況下都不要讀取、檢視或分析 API/CLI 原始碼檔案（例如 `bin/oakmega-scrm.js` 或其他實作檔）來推敲指令、flags 或行為。所有可用指令與參數僅限本文件「可用指令一覽」與 `reference/` 目錄所列，需要用什麼指令、flag、回傳欄位一律以這些文件為準。`reference/` 底下的文件是文件，不是原始碼，是允許且必須參考的權威來源。
 - **超出範圍不查詢**：若使用者想要的資料對應不到本文件列出的任一指令，直接回報「此資料不在 data-fetcher 支援範圍內」，不要嘗試呼叫任何未列出的指令或去源碼裡找替代方法。
+- **禁止猜測／枚舉 id**：`workspace_member_id`、`social_media_member_id`、`broadcast_id` 等任何 id，只能使用某個入口指令（見「API 呼叫順序與依賴」）實際回傳的值。即使已經拿到一批確切的 id（例如 `broadcast search` 回傳的多筆 `id`），也**不得**再取這批 id 的最大值／最小值去推算中間可能存在的其他 id 並逐一嘗試查詢；只查詢已知確實存在、且使用者需要的那些 id。若還需要更多資料，回頭呼叫對應的入口指令（如放寬 `--start-dt`/`--end-dt`、調整 `--limit`）取得更多確切 id，而不是自行遞增/遞減數字去試。
 - **錯誤代碼處理**：
   - CLI 回傳 `401` 或 `403`：不要重試、不要換 workspace-id 或其他參數嘗試繞過，直接回報請使用者檢查 API Key 是否正確／有效，若確認無誤仍失敗，請聯絡 OakMega 窗口確認權限。
   - CLI 回傳 `417`：直接回報請使用者修改查詢條件（例如調整 `--days`、`--limit`、日期範圍等），不要自行重試不同參數組合。

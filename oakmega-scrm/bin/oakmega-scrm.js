@@ -1014,6 +1014,53 @@ async function cmdTagListMembersBatch(argv) {
   process.exit(0);
 }
 
+// ---------- 子指令：statistics get-line-follow-insight ----------
+
+async function cmdStatisticsGetLineFollowInsight(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let date = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--date' && argv[i + 1]) date = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if (!date) {
+    console.error('缺少 --date <YYYY-MM-DD>');
+    process.exit(1);
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams({ date }).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-line-follow-insight/?${qs}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
 // ---------- 子指令：activity-log list-tag-changes ----------
 
 async function cmdActivityLogListTagChanges(argv) {
@@ -1392,6 +1439,8 @@ function printUsage() {
                         [--workspace-id <id>]
   oakmega-scrm statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動數逐日時序（同上）
                         [--workspace-id <id>]
+  oakmega-scrm statistics get-line-follow-insight --date <YYYY-MM-DD>                LINE 官方帳號指定日期的追蹤者洞察（followers/targetedReaches/blocks）
+                        [--workspace-id <id>]
 
   所有指令均可加 [--workspace-id <id>] 覆蓋 config 中的預設 workspace ID。
 
@@ -1448,6 +1497,7 @@ function main() {
   if (a === 'statistics' && b === 'get-line-friend-count-series') return cmdStatisticsGetLineFriendCountSeries(argv.slice(2));
   if (a === 'statistics' && b === 'get-active-member-count-series') return cmdStatisticsGetActiveMemberCountSeries(argv.slice(2));
   if (a === 'statistics' && b === 'get-member-interaction-count-series') return cmdStatisticsGetMemberInteractionCountSeries(argv.slice(2));
+  if (a === 'statistics' && b === 'get-line-follow-insight') return cmdStatisticsGetLineFollowInsight(argv.slice(2));
 
   console.log(`未知指令：${a}`);
   printUsage();

@@ -140,6 +140,9 @@ statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <Y
 
 # 會員互動數（訊息數/點擊數）逐日時序（同上區間規則） → reference/statistics-get-member-interaction-count-series.md
 statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+
+# LINE 官方帳號指定日期的追蹤者洞察 → reference/statistics-get-line-follow-insight.md
+statistics get-line-follow-insight --date <YYYY-MM-DD> [--workspace-id <id>]
 ```
 
 ---

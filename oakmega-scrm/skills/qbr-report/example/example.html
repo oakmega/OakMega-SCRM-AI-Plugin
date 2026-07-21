@@ -94,8 +94,6 @@
   .kpi .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
   .kpi .value { font-size: 26px; font-weight: 600; font-variant-numeric: proportional-nums; }
   .kpi .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-  .kpi .sub.good { color: var(--good); }
-  .kpi .sub.critical { color: var(--critical); }
 
   .card {
     background: var(--surface-1);
@@ -161,11 +159,36 @@
   table.data-table th.col-left, table.data-table td.col-left { text-align: left; }
   table.data-table.rank-table { table-layout: fixed; }
   table.data-table th { color: var(--text-muted); font-weight: 500; }
-  table.data-table td.above { color: var(--good); font-weight: 600; }
+  table.data-table .delta.up { color: var(--good); }
+  table.data-table .delta.down { color: var(--critical); }
   table.data-table td.muted { color: var(--text-muted); }
   table.data-table tbody tr.highlight td { background: rgba(227,73,72,0.08); }
   .table-scroll { max-height: 320px; overflow-y: auto; overflow-x: auto; }
 
+  /* mrow/mval/mdelta：任何一格同時有「數值＋變化量」時都要用這組結構包起來，
+     不要把變化量直接接在數值後面當純文字 —— 純文字寫法在跨期比較表裡，
+     不同數值的位數會讓每一列的變化量長度不一，看起來就會像使用者截圖那樣歪掉。
+     mdelta 給固定的 min-width 並靠右對齊，讓整欄的變化量無論正負號、位數多少都對齊在同一條右邊界，
+     數值（mval）也會因此連帶對齊。沒有變化量的欄位（例如最早一期）只放 mval，不用補空的 mdelta。 */
+  table.data-table .mrow { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; }
+  table.data-table .mval { font-variant-numeric: tabular-nums; }
+  table.data-table .mdelta { display: inline-block; min-width: 5.6em; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------------------------------------------------------------------
+     Rate-bar（開封率／點擊率的迷你比例條）用法規則：
+     1. 寬度（width%）＝該筆數值本身，0~100 的絕對尺度，可跨表互相比較長度。
+     2. 顏色為 3 色錨點漸層，用 rateBarColor(value, avg, topValue) 計算（見下方 script 區塊）：
+          - value < avg（低於本期平均）→ 純 var(--critical) 紅色，不套漸層。
+          - value >= avg → 從 var(--series-4)（琥珀，代表剛好持平平均）
+            線性混色到 var(--good)（綠，代表達到本期最佳 topValue），
+            混色比例 = (value-avg)/(topValue-avg)，用 color-mix(in srgb, ...) 混出來。
+          - topValue／avg 是「同一種指標、同一期」的基準，整份報告同指標只算一次，
+            排名表、明細表、洞察表只要是同一期同一指標就共用同一組 avg/topValue，不要分表重算。
+     3. avg-tick（中間那條刻度線）一律加在每一個 rate-bar 上，left% = 該期平均值，
+        不因為是排名表或點擊率欄位而省略 —— 這是實際報告裡確認過的一致規則。
+     產生報告時請一律呼叫 rateBarHTML(value, avg, topValue) 產生下面這段 HTML，
+     不要手動寫死 background:var(--series-4) 這種單一顏色。
+  --------------------------------------------------------------------- */
   .rate-cell {
     display: inline-flex; align-items: center; justify-content: flex-end;
     gap: 7px; width: 100%;
@@ -217,15 +240,60 @@
     <div class="card-head">
       <h2>帳號總覽分析（近 4 期比較）</h2>
     </div>
+    <!-- 每一格「數值＋變化量」都要用 mrow/mval/mdelta 包起來（見上方 CSS 註解），不要寫成純文字的
+         「0（+-0）」，否則不同位數的數字會讓整欄變化量歪掉。
+         變化量（mdelta 內文字）顏色規則：
+         - 增加為正面表現的指標（活躍人數、活躍率）→ 增加(+)用 class="delta up"（綠），減少(-)用 class="delta down"（紅）。
+         - 增加為負面表現的指標（封鎖數、封鎖率）→ 方向相反：增加(+)用 class="delta down"（紅），減少(-)用 class="delta up"（綠）。
+         - 總好友數、有效（目標）好友數沒有好壞方向，變化量不套色。
+         - 變化量為 0 時不套色（維持預設文字色）。
+         寫法範例：<span class="mrow"><span class="mval">0</span><span class="mdelta">（<span class="delta up">+0</span>）</span></span> -->
     <div class="table-scroll">
       <table class="data-table">
         <thead><tr><th>指標</th><th>{期別1}</th><th>{期別2}</th><th>{期別3}</th><th>{期別4}（本期）</th></tr></thead>
         <tbody>
-          <tr><td>有效（目標）好友數</td><td class="muted">─※</td><td class="muted">─※</td><td class="muted">─※</td><td><b>0</b></td></tr>
-          <tr><td>封鎖數</td><td>0</td><td>0（+-0）</td><td>0（+-0）</td><td><b>0（+-0）</b></td></tr>
-          <tr><td>封鎖率</td><td>0%</td><td>0%（+-0%）</td><td>0%（+-0%）</td><td><b>0%（+-0%）</b></td></tr>
-          <tr><td>活躍人數（逐日加總）</td><td>0</td><td>0（+-0）</td><td>0（+-0）</td><td><b>0（+-0）</b></td></tr>
-          <tr><td>活躍率</td><td>0%</td><td>0%（+-0%）</td><td>0%（+-0%）</td><td><b>0%（+-0%）</b></td></tr>
+          <tr>
+            <td>總好友數</td>
+            <td><span class="mrow"><span class="mval">0</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><b><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></b></td>
+          </tr>
+          <tr>
+            <td>有效（目標）好友數</td>
+            <td><span class="mrow"><span class="mval">0</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><b><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></b></td>
+          </tr>
+          <tr>
+            <td>封鎖數</td>
+            <td><span class="mrow"><span class="mval">0</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><b><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></b></td>
+          </tr>
+          <tr>
+            <td>封鎖率</td>
+            <td><span class="mrow"><span class="mval">0%</span></span></td>
+            <td><span class="mrow"><span class="mval">0%</span><span class="mdelta">（+-0%）</span></span></td>
+            <td><span class="mrow"><span class="mval">0%</span><span class="mdelta">（+-0%）</span></span></td>
+            <td><b><span class="mrow"><span class="mval">0%</span><span class="mdelta">（+-0%）</span></span></b></td>
+          </tr>
+          <tr>
+            <td>活躍人數</td>
+            <td><span class="mrow"><span class="mval">0</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></td>
+            <td><b><span class="mrow"><span class="mval">0</span><span class="mdelta">（+-0）</span></span></b></td>
+          </tr>
+          <tr>
+            <td>活躍率</td>
+            <td><span class="mrow"><span class="mval">0%</span></span></td>
+            <td><span class="mrow"><span class="mval">0%</span><span class="mdelta">（+-0%）</span></span></td>
+            <td><span class="mrow"><span class="mval">0%</span><span class="mdelta">（+-0%）</span></span></td>
+            <td><b><span class="mrow"><span class="mval">0%</span><span class="mdelta">（+-0%）</span></span></b></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -329,6 +397,18 @@
     <div class="card-head">
       <h2>發文成效總覽</h2>
     </div>
+    <!-- 表格內的數值一律只放數字本身，不附加「（N 篇有效）」這類篇數註記（表頭的（{N} 篇）不受影響，照樣統計） -->
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>指標</th><th>上期（{N} 篇）</th><th>本期（{N} 篇）</th></tr></thead>
+        <tbody>
+          <tr><td>發文數</td><td>0</td><td><b>0</b></td></tr>
+          <tr><td>平均受眾數</td><td>0</td><td><b>0</b></td></tr>
+          <tr><td>平均開封率</td><td>0%</td><td><b>0%</b></td></tr>
+          <tr><td>平均點擊率</td><td>0%</td><td><b>0%</b></td></tr>
+        </tbody>
+      </table>
+    </div>
     <div class="insight-box">
       <div class="insight-title">數據小結</div>
       <ul class="insight">
@@ -342,26 +422,20 @@
     <div class="card-head">
       <h2>開封率 / 點擊率前 3 文章</h2>
     </div>
+    <!-- 由 script 區塊內的 renderTopRankTable() 依 broadcasts 陣列排序後自動產生（含 rate-bar／avg-tick，
+         顏色一律由 rateBarColor(value, avg, topValue) 計算，不手動寫死）。 -->
     <div class="table-scroll">
       <table class="data-table rank-table">
         <colgroup><col style="width:14%"><col style="width:46%"><col style="width:20%"><col style="width:20%"></colgroup>
         <thead><tr><th>開封率排名</th><th class="col-left">發文名稱</th><th>受眾數</th><th>開封率</th></tr></thead>
-        <tbody>
-          <tr><td>1</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-          <tr><td>2</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-          <tr><td>3</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-        </tbody>
+        <tbody id="topImpressionBody"></tbody>
       </table>
     </div>
     <div class="table-scroll" style="margin-top:10px;">
       <table class="data-table rank-table">
         <colgroup><col style="width:14%"><col style="width:46%"><col style="width:20%"><col style="width:20%"></colgroup>
         <thead><tr><th>點擊率排名</th><th class="col-left">發文名稱</th><th>受眾數</th><th>點擊率</th></tr></thead>
-        <tbody>
-          <tr><td>1</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-          <tr><td>2</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-          <tr><td colspan="4" class="muted">{未列入排名說明}</td></tr>
-        </tbody>
+        <tbody id="topClickBody"></tbody>
       </table>
     </div>
     <div class="insight-box">
@@ -377,21 +451,14 @@
     <div class="card-head">
       <h2>發文明細表</h2>
     </div>
+    <!-- 由 script 區塊內的 renderDetailTable() 依 broadcasts 陣列自動產生（含 rate-bar／avg-tick）。 -->
     <div class="table-scroll">
       <table class="data-table">
         <thead>
           <tr><th>序</th><th>發佈時間</th><th class="col-left">發文名稱</th><th>受眾數</th><th>開封數</th><th>開封率</th><th>點擊次數</th><th>點擊人數</th><th>點擊率</th></tr>
         </thead>
-        <tbody>
-          <tr><td>1</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-          <tr><td>2</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-          <tr><td>3</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-          <tr><td>4</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
-        </tbody>
+        <tbody id="detailTableBody"></tbody>
       </table>
-    </div>
-    <div style="font-size:12px; color:var(--text-muted); margin-top:8px;">
-      平均開封率 0%；平均點擊率 0%（{比較說明}）。
     </div>
   </div>
 
@@ -403,8 +470,8 @@
       <table class="data-table">
         <thead><tr><th>類型</th><th>篇數</th><th class="col-left">發文清單</th><th>平均開封率</th><th>平均點擊率</th></tr></thead>
         <tbody>
-          <tr><td>精準小眾（受眾 &lt; 200 人）</td><td>0</td><td class="col-left">{發文清單}</td><td>0%</td><td>0%（{說明}）</td></tr>
-          <tr><td>全量廣發（受眾 &gt; 5,000 人）</td><td>0</td><td class="col-left">{發文清單}</td><td>0%</td><td class="muted">{說明}</td></tr>
+          <tr><td>{類型 A}</td><td>0</td><td class="col-left">{發文清單}</td><td>0%</td><td>0%（{說明}）</td></tr>
+          <tr><td>{類型 B}</td><td>0</td><td class="col-left">{發文清單}</td><td>0%</td><td class="muted">{說明}</td></tr>
         </tbody>
       </table>
     </div>
@@ -426,49 +493,86 @@ function getVar(varName) {
   return getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(varName).trim();
 }
 
-// ---------- Data ----------
+// ---------- Data: 好友成長 ----------
 // 範本：每一天一筆物件，請依實際天數複製此結構並填入真實日期／數值
 const friendSeries = [
   { "dt": "{日期}", "line_join_count": 0, "line_block_count": 0, "line_net_count": 0 }
 ];
 
-const overview = { active_line_member_count: 0 };
+const overview = { followers: 0, active_line_member_count: 0, blocks: 0, active_member_count: 0 };
 
 // ---------- KPI tiles: account ----------
-const totalJoin = friendSeries.reduce((s,d)=>s+d.line_join_count,0);
-const totalBlock = friendSeries.reduce((s,d)=>s+d.line_block_count,0);
-const totalNet = friendSeries.reduce((s,d)=>s+d.line_net_count,0);
-const avgJoin = (totalJoin/friendSeries.length);
-const avgBlock = (totalBlock/friendSeries.length);
+const blockRate = overview.followers ? (overview.blocks/overview.followers*100) : 0;
+const activeRate = overview.followers ? (overview.active_member_count/overview.followers*100) : 0;
 
 const kpis = [
-  { label: '有效（目標）好友數', value: fmt(overview.active_line_member_count), sub: '目前快照（本期）' },
-  { label: '本月新增好友', value: '+' + fmt(totalJoin), sub: `平均每日 ${avgJoin.toFixed(2)} 人` },
-  { label: '本月封鎖數', value: fmt(totalBlock), sub: `平均每日 ${avgBlock.toFixed(2)} 人`, cls: 'critical' },
-  { label: '本月淨成長', value: (totalNet>=0?'+':'') + fmt(totalNet), sub: '{比較備註}', cls: 'good' },
-  { label: '本期封鎖率', value: '0%', sub: '{比較備註}' },
-  { label: '本期活躍率', value: '0%', sub: '{比較備註}', cls: 'good' },
+  { label: '總好友數', value: fmt(overview.followers), sub: '截至 {資料查詢時間}' },
+  { label: '有效（目標）好友數', value: fmt(overview.active_line_member_count), sub: '截至 {資料查詢時間}' },
+  { label: '封鎖數', value: fmt(overview.blocks), sub: '截至 {資料查詢時間}' },
+  { label: '封鎖率', value: blockRate.toFixed(2) + '%', sub: '截至 {資料查詢時間}' },
+  { label: '活躍數', value: fmt(overview.active_member_count), sub: '{本期初} - {本期末}' },
+  { label: '活躍率', value: activeRate.toFixed(2) + '%', sub: '{本期初} - {本期末}' },
 ];
 const kpiGrid = document.getElementById('kpiGrid');
 kpis.forEach(k => {
   const el = document.createElement('div');
   el.className = 'kpi';
-  el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub ${k.cls||''}">${k.sub}</div>`;
+  el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub">${k.sub}</div>`;
   kpiGrid.appendChild(el);
 });
 
+// ---------- Rate-bar 顏色／刻度 helper（見上方 CSS 註解的規則說明） ----------
+// value/avg/topValue 都是「百分比數字」（例如 39.02 代表 39.02%），同一把 0~100 尺度。
+// 用法範例（取自實際月報驗證過的資料）：
+//   rateBarColor(39.02, 29.26, 39.02) -> 'var(--good)'                              // 本期最佳，純綠
+//   rateBarColor(37.72, 29.26, 39.02) -> 'color-mix(in srgb, var(--good) 87%, var(--series-4) 13%)'
+//   rateBarColor(33.33, 29.26, 39.02) -> 'color-mix(in srgb, var(--good) 42%, var(--series-4) 58%)'
+//   rateBarColor(6.98,  29.26, 39.02) -> 'var(--critical)'                          // 低於平均，純紅
+function rateBarColor(value, avg, topValue) {
+  if (value < avg) return 'var(--critical)';
+  if (topValue <= avg) return 'var(--good)'; // 防呆：本期所有值相同時視為並列最佳
+  const greenPct = Math.max(0, Math.min(1, (value - avg) / (topValue - avg))) * 100;
+  if (greenPct >= 99.5) return 'var(--good)';
+  return `color-mix(in srgb, var(--good) ${greenPct.toFixed(0)}%, var(--series-4) ${(100 - greenPct).toFixed(0)}%)`;
+}
+// 產生完整的 rate-cell HTML（含數值、比例條、顏色漸層、avg-tick），供排名表／明細表共用
+function rateBarHTML(value, avg, topValue) {
+  const color = rateBarColor(value, avg, topValue);
+  return `<span class="rate-cell"><span class="rate-val">${value.toFixed(2)}%</span><span class="rate-bar"><i class="fill" style="width:${value}%;background:${color}"></i><i class="avg-tick" style="left:${avg}%"></i></span></span>`;
+}
+function dashCell() { return '<span class="muted">—</span>'; }
+function avgOf(list, key) {
+  const vals = list.map(b => b[key]).filter(v => v !== null && v !== undefined);
+  return vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : null;
+}
+
+// ---------- Data: 發文成效 ----------
+// 範本：每篇本期已發送（排除草稿）的發文一筆物件。
+// clickCount / clickUser / clickRate 若該篇沒有可追蹤點擊連結，一律填 null——
+// renderDetailTable/renderRankTable 會自動顯示「—」且不列入點擊率排名／平均計算。
+const broadcasts = [
+  { name: '{發文名稱}', dt: '{YYYY-MM-DD HH:MM:SS}', audience: 0, impression: 0, impressionRate: 0, clickCount: null, clickUser: null, clickRate: null }
+];
+
+const avgImpressionRate = avgOf(broadcasts, 'impressionRate');
+const topImpressionRate = Math.max(...broadcasts.map(b => b.impressionRate));
+const clickable = broadcasts.filter(b => b.clickRate !== null && b.clickRate !== undefined);
+const avgClickRate = avgOf(clickable, 'clickRate');
+const topClickRate = clickable.length ? Math.max(...clickable.map(b => b.clickRate)) : null;
+
 // ---------- KPI tiles: broadcast ----------
+// 注意：value 一律只放數字本身，不附加「（N 篇有效）」這類篇數註記
 const kpisBroadcast = [
-  { label: '發文數（已排除草稿）', value: '0', sub: '{報告月份} 已發送' },
-  { label: '平均受眾數', value: fmt(0), sub: '{備註}' },
-  { label: '平均開封率', value: '0%', sub: '{篇數} 篇平均' },
-  { label: '平均互動（點擊）率', value: '0%', sub: '僅 {篇數} 篇已產生點擊數據' },
+  { label: '發文數（已排除草稿）', value: '0' },
+  { label: '平均受眾數', value: fmt(0) },
+  { label: '平均開封率', value: '0%' },
+  { label: '平均點擊率', value: '0%' },
 ];
 const kpiBroadcastGrid = document.getElementById('kpiBroadcast');
 kpisBroadcast.forEach(k => {
   const el = document.createElement('div');
   el.className = 'kpi';
-  el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub ${k.cls||''}">${k.sub}</div>`;
+  el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div>`;
   kpiBroadcastGrid.appendChild(el);
 });
 
@@ -641,6 +745,29 @@ document.getElementById('tableFriendsDaily').innerHTML = dailyTable(friendSeries
   { key: 'line_block_count', label: '封鎖' },
   { key: 'line_net_count', label: '淨成長', signed: true },
 ]);
+
+// ---------- 開封率／點擊率前 3 排名表（自動套用 rate-bar 漸層 + avg-tick） ----------
+function renderTopRankTable(tbodyId, list, valueKey, avg, top) {
+  const rows = list.slice(0, 3).map((b, i) => {
+    return `<tr><td>${i+1}</td><td class="col-left">${b.name}</td><td>${fmt(b.audience)}</td><td>${rateBarHTML(b[valueKey], avg, top)}</td></tr>`;
+  }).join('');
+  document.getElementById(tbodyId).innerHTML = rows || '<tr><td colspan="4" class="muted">尚無資料</td></tr>';
+}
+renderTopRankTable('topImpressionBody', [...broadcasts].sort((a,b) => b.impressionRate - a.impressionRate), 'impressionRate', avgImpressionRate, topImpressionRate);
+renderTopRankTable('topClickBody', [...clickable].sort((a,b) => b.clickRate - a.clickRate), 'clickRate', avgClickRate, topClickRate);
+
+// ---------- 發文明細表（自動套用 rate-bar 漸層 + avg-tick） ----------
+function renderDetailTable(tbodyId) {
+  const sorted = [...broadcasts].sort((a, b) => a.dt.localeCompare(b.dt));
+  const rows = sorted.map((b, i) => {
+    const impCell = rateBarHTML(b.impressionRate, avgImpressionRate, topImpressionRate);
+    const hasClick = b.clickRate !== null && b.clickRate !== undefined;
+    const clickCell = hasClick ? rateBarHTML(b.clickRate, avgClickRate, topClickRate) : dashCell();
+    return `<tr><td>${i+1}</td><td>${b.dt}</td><td class="col-left">${b.name}</td><td>${fmt(b.audience)}</td><td>${fmt(b.impression)}</td><td>${impCell}</td><td>${hasClick?fmt(b.clickCount):dashCell()}</td><td>${hasClick?fmt(b.clickUser):dashCell()}</td><td>${clickCell}</td></tr>`;
+  }).join('');
+  document.getElementById(tbodyId).innerHTML = rows || '<tr><td colspan="9" class="muted">尚無資料</td></tr>';
+}
+renderDetailTable('detailTableBody');
 </script>
 </body>
 </html>

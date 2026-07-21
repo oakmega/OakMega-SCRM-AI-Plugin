@@ -37,6 +37,7 @@ node "$CLAUDE_PLUGIN_ROOT/bin/oakmega-scrm.js" <command>
 
 預設將結果整理成人類可讀格式回覆（摘要、表格、條列等）。
 若呼叫端在 context 中明確指定 `output: json`，改為回傳 CLI 的 raw JSON 原文，不做任何格式轉換。
+不要回傳 CLI 的參數或是 result 的英文命名，要轉化成 OakMega SCRM 使用者能理解的功能名詞。
 
 ## Auth bootstrap（任何操作前都先做）
 

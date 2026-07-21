@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OakMega SCRM {報告月份}月報</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1: #2a78d6; /* blue   - 新增 */
+    --series-2: #008300; /* green  - 開封率 / 精準組 */
+    --series-8: #e34948; /* red    - 封鎖 */
+    --series-7: #4a3aa7; /* violet - 淨成長 */
+    --series-4: #eda100; /* yellow - 點擊率 / 互動 */
+    --series-6: #eb6834; /* orange - 全量組 */
+    --good:     #0ca30c;
+    --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --series-2: #008300;
+      --series-8: #e66767;
+      --series-7: #9085e9;
+      --series-4: #c98500;
+      --series-6: #d95926;
+      --good:     #0ca30c;
+      --critical: #e66767;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --series-2: #008300;
+    --series-8: #e66767;
+    --series-7: #9085e9;
+    --series-4: #c98500;
+    --series-6: #d95926;
+    --good:     #0ca30c;
+    --critical: #e66767;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
+  header h1 { font-size: 22px; margin: 0 0 4px; }
+  header p { color: var(--text-secondary); margin: 0 0 28px; font-size: 14px; }
+
+  .section-title { font-size: 18px; margin: 40px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--text-primary); }
+  .section-title:first-of-type { margin-top: 0; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .kpi .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .kpi .value { font-size: 26px; font-weight: 600; font-variant-numeric: proportional-nums; }
+  .kpi .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .kpi .sub.good { color: var(--good); }
+  .kpi .sub.critical { color: var(--critical); }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px 12px;
+    margin-bottom: 22px;
+  }
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .card-head h2 { font-size: 15px; margin: 0; }
+  .card-head .desc { font-size: 12px; color: var(--text-muted); }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin: 4px 0 8px; }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .legend .line { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .baseline { stroke: var(--baseline); stroke-width: 1; }
+  .axis-label { fill: var(--text-muted); font-size: 10px; }
+  .mark-line { fill: none; stroke-width: 2; }
+  .dot { r: 3; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--text-primary);
+    color: var(--surface-1);
+    font-size: 11px;
+    padding: 6px 9px;
+    border-radius: 8px;
+    line-height: 1.5;
+    transform: translate(-50%, -110%);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.08s ease;
+    z-index: 5;
+  }
+  .crosshair { stroke: var(--baseline); stroke-width: 1; opacity: 0; }
+  .chart-holder { position: relative; }
+
+  details.table-toggle { margin-top: 8px; }
+  details.table-toggle summary {
+    cursor: pointer; font-size: 12px; color: var(--text-secondary);
+    user-select: none;
+  }
+  table.data-table {
+    width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  table.data-table th, table.data-table td {
+    text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--grid);
+  }
+  table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+  table.data-table th.col-left, table.data-table td.col-left { text-align: left; }
+  table.data-table.rank-table { table-layout: fixed; }
+  table.data-table th { color: var(--text-muted); font-weight: 500; }
+  table.data-table td.above { color: var(--good); font-weight: 600; }
+  table.data-table td.muted { color: var(--text-muted); }
+  table.data-table tbody tr.highlight td { background: rgba(227,73,72,0.08); }
+  .table-scroll { max-height: 320px; overflow-y: auto; overflow-x: auto; }
+
+  .rate-cell {
+    display: inline-flex; align-items: center; justify-content: flex-end;
+    gap: 7px; width: 100%;
+  }
+  .rate-bar {
+    width: 46px; height: 6px; border-radius: 3px; background: var(--grid);
+    flex: none; position: relative;
+  }
+  .rate-bar .fill { display: block; height: 100%; border-radius: 3px; }
+  .rate-bar .avg-tick {
+    position: absolute; top: -2px; bottom: -2px; width: 1px;
+    background: var(--text-primary); opacity: 0.5;
+  }
+  .rate-val { font-variant-numeric: tabular-nums; }
+
+  .insight-box {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: rgba(127,127,127,0.07);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .insight-title {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .insight { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+  .insight li { position: relative; padding-left: 15px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
+  .insight li::before {
+    content: ''; position: absolute; left: 1px; top: 0.58em;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted);
+  }
+  .insight b { color: var(--text-primary); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="viz-root">
+<div class="wrap">
+  <header>
+    <h1>OakMega SCRM 月報</h1>
+    <p>報告期間 {期間起日} – {期間迄日}（本期）· 比較基期 {比較基期說明}</p>
+  </header>
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <h2 class="section-title">一、帳號總覽分析</h2>
+  <div class="card">
+    <div class="card-head">
+      <h2>帳號總覽分析（近 4 期比較）</h2>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>指標</th><th>{期別1}</th><th>{期別2}</th><th>{期別3}</th><th>{期別4}（本期）</th></tr></thead>
+        <tbody>
+          <tr><td>有效（目標）好友數</td><td class="muted">─※</td><td class="muted">─※</td><td class="muted">─※</td><td><b>0</b></td></tr>
+          <tr><td>封鎖數</td><td>0</td><td>0（+-0）</td><td>0（+-0）</td><td><b>0（+-0）</b></td></tr>
+          <tr><td>封鎖率</td><td>0%</td><td>0%（+-0%）</td><td>0%（+-0%）</td><td><b>0%（+-0%）</b></td></tr>
+          <tr><td>活躍人數（逐日加總）</td><td>0</td><td>0（+-0）</td><td>0（+-0）</td><td><b>0（+-0）</b></td></tr>
+          <tr><td>活躍率</td><td>0%</td><td>0%（+-0%）</td><td>0%（+-0%）</td><td><b>0%（+-0%）</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="insight-box">
+      <div class="insight-title">數據小結</div>
+      <ul class="insight">
+        <li>{數據小結}</li>
+        <li>...</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="section-title">二、好友成長分析</h2>
+  <div class="card">
+    <div class="card-head">
+      <h2>每日新增／封鎖趨勢</h2>
+    </div>
+    <div class="legend">
+      <span class="item"><span class="swatch" style="background:var(--series-1)"></span>新增</span>
+      <span class="item"><span class="swatch" style="background:var(--series-8)"></span>封鎖</span>
+      <span class="item"><span class="line" style="background:var(--series-7); opacity:.7"></span>淨成長</span>
+    </div>
+    <div class="chart-holder" id="chartFriends"></div>
+    <div class="insight-box">
+      <div class="insight-title">數據小結</div>
+      <ul class="insight">
+        <li>{數據小結}</li>
+        <li>...</li>
+      </ul>
+    </div>
+    <details class="table-toggle">
+      <summary>顯示每日數據表格</summary>
+      <div class="table-scroll" id="tableFriendsDaily"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>好友新增排名（前 10）</h2>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>名次</th><th>日期</th><th>新增好友數</th><th>當日發文主題／活動</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>2</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>3</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>4</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>5</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>6</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>7</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>8</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>9</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>10</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="insight-box">
+      <div class="insight-title">數據小結</div>
+      <ul class="insight">
+        <li>{數據小結}</li>
+        <li>...</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>好友封鎖排名（前 10）</h2>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>名次</th><th>日期</th><th>封鎖好友數</th><th>當日發文主題／活動</th></tr></thead>
+        <tbody>
+          <tr class="highlight"><td>1</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>2</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>3</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>4</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>5</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>6</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>7</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>8</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>9</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+          <tr><td>10</td><td>{日期}</td><td>0</td><td>{發文主題}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="insight-box">
+      <div class="insight-title">數據小結</div>
+      <ul class="insight">
+        <li>{數據小結}</li>
+        <li>...</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="section-title">三、發布文章成效</h2>
+  <div class="kpi-grid" id="kpiBroadcast"></div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>發文成效總覽</h2>
+    </div>
+    <div class="insight-box">
+      <div class="insight-title">數據小結</div>
+      <ul class="insight">
+        <li>{數據小結}</li>
+        <li>...</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>開封率 / 點擊率前 3 文章</h2>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table rank-table">
+        <colgroup><col style="width:14%"><col style="width:46%"><col style="width:20%"><col style="width:20%"></colgroup>
+        <thead><tr><th>開封率排名</th><th class="col-left">發文名稱</th><th>受眾數</th><th>開封率</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+          <tr><td>2</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+          <tr><td>3</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-scroll" style="margin-top:10px;">
+      <table class="data-table rank-table">
+        <colgroup><col style="width:14%"><col style="width:46%"><col style="width:20%"><col style="width:20%"></colgroup>
+        <thead><tr><th>點擊率排名</th><th class="col-left">發文名稱</th><th>受眾數</th><th>點擊率</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+          <tr><td>2</td><td class="col-left">{發文名稱}</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+          <tr><td colspan="4" class="muted">{未列入排名說明}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="insight-box">
+      <div class="insight-title">數據小結</div>
+      <ul class="insight">
+        <li>{數據小結}</li>
+        <li>...</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>發文明細表</h2>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr><th>序</th><th>發佈時間</th><th class="col-left">發文名稱</th><th>受眾數</th><th>開封數</th><th>開封率</th><th>點擊次數</th><th>點擊人數</th><th>點擊率</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+          <tr><td>2</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+          <tr><td>3</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+          <tr><td>4</td><td>{發佈時間}</td><td class="col-left">{發文名稱}</td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td><td>0</td><td>0</td><td><span class="rate-cell"><span class="rate-val">0%</span><span class="rate-bar"><i class="fill" style="width:0%;background:var(--series-4)"></i><i class="avg-tick" style="left:0%"></i></span></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); margin-top:8px;">
+      平均開封率 0%；平均點擊率 0%（{比較說明}）。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>發文洞察：{洞察標題}</h2>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>類型</th><th>篇數</th><th class="col-left">發文清單</th><th>平均開封率</th><th>平均點擊率</th></tr></thead>
+        <tbody>
+          <tr><td>精準小眾（受眾 &lt; 200 人）</td><td>0</td><td class="col-left">{發文清單}</td><td>0%</td><td>0%（{說明}）</td></tr>
+          <tr><td>全量廣發（受眾 &gt; 5,000 人）</td><td>0</td><td class="col-left">{發文清單}</td><td>0%</td><td class="muted">{說明}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="insight-box">
+      <div class="insight-title">數據小結</div>
+      <ul class="insight">
+        <li>{數據小結}</li>
+        <li>...</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+function fmt(n) { return n.toLocaleString('en-US'); }
+function getVar(varName) {
+  return getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(varName).trim();
+}
+
+// ---------- Data ----------
+// 範本：每一天一筆物件，請依實際天數複製此結構並填入真實日期／數值
+const friendSeries = [
+  { "dt": "{日期}", "line_join_count": 0, "line_block_count": 0, "line_net_count": 0 }
+];
+
+const overview = { active_line_member_count: 0 };
+
+// ---------- KPI tiles: account ----------
+const totalJoin = friendSeries.reduce((s,d)=>s+d.line_join_count,0);
+const totalBlock = friendSeries.reduce((s,d)=>s+d.line_block_count,0);
+const totalNet = friendSeries.reduce((s,d)=>s+d.line_net_count,0);
+const avgJoin = (totalJoin/friendSeries.length);
+const avgBlock = (totalBlock/friendSeries.length);
+
+const kpis = [
+  { label: '有效（目標）好友數', value: fmt(overview.active_line_member_count), sub: '目前快照（本期）' },
+  { label: '本月新增好友', value: '+' + fmt(totalJoin), sub: `平均每日 ${avgJoin.toFixed(2)} 人` },
+  { label: '本月封鎖數', value: fmt(totalBlock), sub: `平均每日 ${avgBlock.toFixed(2)} 人`, cls: 'critical' },
+  { label: '本月淨成長', value: (totalNet>=0?'+':'') + fmt(totalNet), sub: '{比較備註}', cls: 'good' },
+  { label: '本期封鎖率', value: '0%', sub: '{比較備註}' },
+  { label: '本期活躍率', value: '0%', sub: '{比較備註}', cls: 'good' },
+];
+const kpiGrid = document.getElementById('kpiGrid');
+kpis.forEach(k => {
+  const el = document.createElement('div');
+  el.className = 'kpi';
+  el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub ${k.cls||''}">${k.sub}</div>`;
+  kpiGrid.appendChild(el);
+});
+
+// ---------- KPI tiles: broadcast ----------
+const kpisBroadcast = [
+  { label: '發文數（已排除草稿）', value: '0', sub: '{報告月份} 已發送' },
+  { label: '平均受眾數', value: fmt(0), sub: '{備註}' },
+  { label: '平均開封率', value: '0%', sub: '{篇數} 篇平均' },
+  { label: '平均互動（點擊）率', value: '0%', sub: '僅 {篇數} 篇已產生點擊數據' },
+];
+const kpiBroadcastGrid = document.getElementById('kpiBroadcast');
+kpisBroadcast.forEach(k => {
+  const el = document.createElement('div');
+  el.className = 'kpi';
+  el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub ${k.cls||''}">${k.sub}</div>`;
+  kpiBroadcastGrid.appendChild(el);
+});
+
+// ---------- Chart engine (SVG stacked/grouped bar chart + optional line overlay) ----------
+function buildChart(container, data, keys, opts) {
+  const width = 1000, height = opts.height || 260;
+  const margin = { top: 16, right: 12, bottom: 24, left: 40 };
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  const barKeys = keys.filter(k => !k.line);
+  const lineKeys = keys.filter(k => k.line);
+  const grouped = !!opts.grouped;
+  const diverging = !!opts.diverging;
+  const keyValue = (d, k) => (diverging && k.direction === 'down') ? -d[k.key] : d[k.key];
+
+  const stackTotals = data.map(d => {
+    if (diverging) return Math.max(0, ...barKeys.filter(k=>k.direction!=='down').map(k=>d[k.key]), 1);
+    if (grouped) return Math.max(...barKeys.map(k=>d[k.key]));
+    return barKeys.reduce((s,k) => s + d[k.key], 0);
+  });
+  let allVals = [...stackTotals];
+  if (diverging) data.forEach(d => barKeys.forEach(k => allVals.push(keyValue(d,k))));
+  lineKeys.forEach(k => data.forEach(d => allVals.push(d[k.key])));
+  let maxV = Math.max(...allVals, 1);
+  let minV = (opts.allowNegative || diverging) ? Math.min(...allVals, 0) : 0;
+  const pad = (maxV - minV) * 0.12 || 1;
+  maxV += pad;
+  if (opts.allowNegative || diverging) minV -= pad;
+
+  const n = data.length;
+  const band = innerW / n;
+  const slotX = i => margin.left + i * band;
+  const centerX = i => slotX(i) + band / 2;
+  const y = v => margin.top + innerH - ((v - minV) / (maxV - minV)) * innerH;
+
+  const zeroY = y(0);
+  const baseY = zeroY;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">`;
+
+  const rows = 4;
+  for (let r = 0; r <= rows; r++) {
+    const v = minV + (maxV - minV) * (r / rows);
+    const yy = y(v);
+    svg += `<line class="gridline" x1="${margin.left}" x2="${width-margin.right}" y1="${yy}" y2="${yy}" />`;
+    svg += `<text class="axis-label" x="${margin.left-6}" y="${yy+3}" text-anchor="end">${opts.pct ? v.toFixed(1)+'%' : Math.round(v)}</text>`;
+  }
+  svg += `<line class="baseline" x1="${margin.left}" x2="${width-margin.right}" y1="${baseY}" y2="${baseY}" />`;
+
+  const tickEvery = Math.ceil(n / (opts.maxTicks || 8));
+  data.forEach((d, i) => {
+    if (i % tickEvery === 0 || i === n - 1) {
+      const lab = opts.fullLabel ? d.label : d.dt.slice(5);
+      svg += `<text class="axis-label" x="${centerX(i)}" y="${height-4}" text-anchor="middle">${lab}</text>`;
+    }
+  });
+
+  svg += `<g class="bars">`;
+  data.forEach((d, i) => {
+    if (grouped) {
+      const gW = band * 0.6 / barKeys.length;
+      barKeys.forEach((k, ki) => {
+        const v = d[k.key];
+        const bx = slotX(i) + band*0.2 + ki*gW;
+        const topY = y(Math.max(v,0));
+        const boty = y(Math.min(v,0));
+        const h = Math.max(Math.abs(boty-topY), 0.5);
+        svg += `<rect class="bar" x="${bx.toFixed(2)}" y="${Math.min(topY,boty).toFixed(2)}" width="${(gW*0.82).toFixed(2)}" height="${h.toFixed(2)}" fill="${k.color}"/>`;
+      });
+    } else if (diverging) {
+      const barX0 = slotX(i) + band * 0.18;
+      const barW = band * 0.64;
+      barKeys.forEach(k => {
+        const raw = d[k.key];
+        const v = keyValue(d, k);
+        const topY = y(Math.max(v,0));
+        const botY = y(Math.min(v,0));
+        const h = Math.max(Math.abs(botY-topY), raw !== 0 ? 0.5 : 0);
+        svg += `<rect class="bar" data-idx="${i}" data-key="${k.key}" x="${barX0.toFixed(2)}" y="${Math.min(topY,botY).toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${k.color}"/>`;
+      });
+    } else {
+      let cum = 0;
+      const barX0 = slotX(i) + band * 0.18;
+      const barW = band * 0.64;
+      barKeys.forEach(k => {
+        const v = d[k.key];
+        const segTopY = y(cum + v);
+        const segBotY = y(cum);
+        const rectY = Math.min(segTopY, segBotY);
+        const rectH = Math.max(Math.abs(segBotY - segTopY), v > 0 ? 0.5 : 0);
+        svg += `<rect class="bar" data-idx="${i}" data-key="${k.key}" x="${barX0.toFixed(2)}" y="${rectY.toFixed(2)}" width="${barW.toFixed(2)}" height="${rectH.toFixed(2)}" fill="${k.color}"/>`;
+        cum += v;
+      });
+    }
+  });
+  svg += `</g>`;
+
+  lineKeys.forEach(k => {
+    let path = '';
+    data.forEach((d,i) => { path += (i===0?'M':'L') + ` ${centerX(i)} ${y(d[k.key])} `; });
+    svg += `<path class="mark-line" d="${path}" stroke="${k.color}" stroke-dasharray="${k.dash||'none'}"/>`;
+    data.forEach((d,i) => {
+      svg += `<circle class="dot" cx="${centerX(i)}" cy="${y(d[k.key])}" fill="${k.color}"/>`;
+    });
+  });
+
+  svg += `<g class="hover-slots">`;
+  data.forEach((d, i) => {
+    svg += `<rect class="hover-slot" data-idx="${i}" x="${slotX(i).toFixed(2)}" y="${margin.top}" width="${band.toFixed(2)}" height="${innerH}" fill="transparent"/>`;
+  });
+  svg += `</g>`;
+  svg += `<line class="crosshair" id="crosshair-${opts.id}" x1="0" x2="0" y1="${margin.top}" y2="${margin.top+innerH}"/>`;
+  svg += `</svg>`;
+
+  container.innerHTML = svg + `<div class="tooltip" id="tooltip-${opts.id}"></div>`;
+
+  const svgEl = container.querySelector('svg');
+  const tooltip = container.querySelector(`#tooltip-${opts.id}`);
+  const crosshair = container.querySelector(`#crosshair-${opts.id}`);
+
+  svgEl.addEventListener('mousemove', (e) => {
+    const rect = svgEl.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width * width;
+    let idx = Math.floor((relX - margin.left) / band);
+    idx = Math.max(0, Math.min(n - 1, idx));
+    const d = data[idx];
+    const cx = centerX(idx);
+    crosshair.setAttribute('x1', cx);
+    crosshair.setAttribute('x2', cx);
+    crosshair.style.opacity = 1;
+    const title = opts.fullLabel ? d.label : d.dt;
+    let lines = keys.map(k => `<span style="color:${k.color}">●</span> ${k.label}: ${d[k.key]}${opts.pct ? '%' : ''}`).join('<br/>');
+    tooltip.innerHTML = `<strong>${title}</strong><br/>${lines}`;
+    tooltip.style.opacity = 1;
+    const px = (cx / width) * rect.width;
+    const topY = Math.min(y(stackTotals[idx]), ...lineKeys.map(k => y(d[k.key])), baseY);
+    const py = (topY / height) * rect.height;
+    tooltip.style.left = px + 'px';
+    tooltip.style.top = py + 'px';
+  });
+  svgEl.addEventListener('mouseleave', () => {
+    tooltip.style.opacity = 0;
+    crosshair.style.opacity = 0;
+  });
+}
+
+// Friends chart — 新增以 0 為基準向上，封鎖以 0 為基準向下，淨成長為衍生指標以折線疊加顯示
+buildChart(document.getElementById('chartFriends'), friendSeries, [
+  { key: 'line_join_count', color: getVar('--series-1'), label: '新增', direction: 'up' },
+  { key: 'line_block_count', color: getVar('--series-8'), label: '封鎖', direction: 'down' },
+  { key: 'line_net_count', color: getVar('--series-7'), label: '淨成長', line: true, dash: '4 3' },
+], { id: 'friends', diverging: true, maxTicks: 10 });
+
+// ---------- Daily table ----------
+function dailyTable(data, cols) {
+  let html = `<table class="data-table"><thead><tr><th>日期</th>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead><tbody>`;
+  data.forEach(d => {
+    html += `<tr><td>${d.dt}</td>${cols.map(c=>{
+      let v = d[c.key];
+      if (c.signed) v = (v>=0?'+':'') + v;
+      return `<td>${v}</td>`;
+    }).join('')}</tr>`;
+  });
+  html += `</tbody></table>`;
+  return html;
+}
+document.getElementById('tableFriendsDaily').innerHTML = dailyTable(friendSeries, [
+  { key: 'line_join_count', label: '新增' },
+  { key: 'line_block_count', label: '封鎖' },
+  { key: 'line_net_count', label: '淨成長', signed: true },
+]);
+</script>
+</body>
+</html>

@@ -543,52 +543,6 @@ async function cmdBroadcastSearch(argv) {
   process.exit(0);
 }
 
-// ---------- 子指令：broadcast get-statistics ----------
-
-async function cmdBroadcastGetStatistics(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
-  let workspaceId = null;
-  let broadcastId = null;
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
-    else if (argv[i] === '--broadcast-id' && argv[i + 1]) broadcastId = argv[++i];
-  }
-
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
-  if (!broadcastId) {
-    console.error('缺少 --broadcast-id <id>');
-    process.exit(1);
-  }
-
-  const baseUrl = getBaseUrl();
-  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/broadcast/get-broadcast-statistics/${broadcastId}/`;
-
-  let result;
-  try {
-    result = await apiRequest(url, key);
-  } catch (err) {
-    console.error('請求失敗：' + err.message);
-    process.exit(1);
-  }
-
-  if (result.status !== 200) {
-    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
-    process.exit(1);
-  }
-
-  console.log(result.body);
-  process.exit(0);
-}
-
 // ---------- 子指令：statistics get-workspace-member-overview ----------
 
 async function cmdStatisticsGetWorkspaceMemberOverview(argv) {
@@ -666,6 +620,61 @@ async function cmdStatisticsGetLineFriendCountSeries(argv) {
   const baseUrl = getBaseUrl();
   const qs = new URLSearchParams(params).toString();
   const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-line-friend-count-series/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-line-friend-count-total ----------
+
+async function cmdStatisticsGetLineFriendCountTotal(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-line-friend-count-total/${qs ? `?${qs}` : ''}`;
 
   let result;
   try {
@@ -776,6 +785,61 @@ async function cmdStatisticsGetMemberInteractionCountSeries(argv) {
   const baseUrl = getBaseUrl();
   const qs = new URLSearchParams(params).toString();
   const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-member-interaction-count-series/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-member-interaction-count-total ----------
+
+async function cmdStatisticsGetMemberInteractionCountTotal(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-member-interaction-count-total/${qs ? `?${qs}` : ''}`;
 
   let result;
   try {
@@ -1043,6 +1107,147 @@ async function cmdStatisticsGetLineFollowInsight(argv) {
   const baseUrl = getBaseUrl();
   const qs = new URLSearchParams({ date }).toString();
   const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-line-follow-insight/?${qs}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics list-broadcast-six-hour-interaction-batch ----------
+
+async function cmdStatisticsListBroadcastSixHourInteractionBatch(argv) {
+  const key = getApiKey();
+  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
+
+  let workspaceId = null;
+  let broadcastIdsStr = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--broadcast-ids' && argv[i + 1]) broadcastIdsStr = argv[++i];
+  }
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  if (!broadcastIdsStr) { console.error('缺少 --broadcast-ids <id1,id2,...>'); process.exit(1); }
+
+  const broadcastIds = broadcastIdsStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+  if (broadcastIds.length === 0) { console.error('--broadcast-ids 必須包含至少一個有效數字 ID'); process.exit(1); }
+  if (broadcastIds.length > 20) { console.error('--broadcast-ids 最多 20 筆'); process.exit(1); }
+
+  const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/statistics/list-broadcast-six-hour-interaction-batch/`;
+  let result;
+  try { result = await apiPostRequest(url, key, { broadcast_ids: broadcastIds }); } catch (err) { console.error('請求失敗：' + err.message); process.exit(1); }
+  if (result.status !== 200) { console.error(`API 回傳 HTTP ${result.status}：${result.body}`); process.exit(1); }
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics search-broadcast-six-hour-interaction ----------
+
+async function cmdStatisticsSearchBroadcastSixHourInteraction(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let startDt = null;
+  let endDt = null;
+  let limit = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+    else if (argv[i] === '--limit' && argv[i + 1]) limit = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.broadcast_start_dt = startDt;
+    params.broadcast_end_dt = endDt;
+  }
+  if (limit) params.limit = limit;
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/search-broadcast-six-hour-interaction/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-active-member-count-total ----------
+
+async function cmdStatisticsGetActiveMemberCountTotal(argv) {
+  const key = getApiKey();
+  if (!key) {
+    console.error('尚未登入，請先執行：oakmega-scrm login');
+    process.exit(1);
+  }
+
+  let workspaceId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  if (!workspaceId) workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
+    process.exit(1);
+  }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-active-member-count-total/${qs ? `?${qs}` : ''}`;
 
   let result;
   try {
@@ -1398,10 +1603,8 @@ function printUsage() {
                         [--workspace-id <id>]
 
   ── Broadcast ──
-  oakmega-scrm broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD>  搜尋發文
+  oakmega-scrm broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD>  搜尋發文（含開封/點擊/影片播放數據）
                         [--name <關鍵字>] [--limit <n>] [--workspace-id <id>]
-  oakmega-scrm broadcast get-statistics --broadcast-id <id>                   取得單一發文統計（6 小時互動 / 影片播放）
-                        [--workspace-id <id>]
 
   ── Chatbot ──
   oakmega-scrm chatbot list-recent-triggered [--days <1-7>]                          workspace 最近 N 日 chatbot 排行（預設 7 日）
@@ -1435,11 +1638,21 @@ function printUsage() {
                         [--workspace-id <id>]
   oakmega-scrm statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]   LINE 好友加入/封鎖逐日時序（預設近 30 天，最長 90 天）
                         [--workspace-id <id>]
+  oakmega-scrm statistics get-line-friend-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  LINE 好友加入/封鎖總數（區間加總單一數字，同上區間規則）
+                        [--workspace-id <id>]
   oakmega-scrm statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員數逐日時序（同上）
+                        [--workspace-id <id>]
+  oakmega-scrm statistics get-active-member-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員總數（區間去重單一數字，同上區間規則）
                         [--workspace-id <id>]
   oakmega-scrm statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動數逐日時序（同上）
                         [--workspace-id <id>]
+  oakmega-scrm statistics get-member-interaction-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動總數（區間加總單一數字，同上區間規則）
+                        [--workspace-id <id>]
   oakmega-scrm statistics get-line-follow-insight --date <YYYY-MM-DD>                LINE 官方帳號指定日期的追蹤者洞察（followers/targetedReaches/blocks）
+                        [--workspace-id <id>]
+  oakmega-scrm statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,...>  批次取得多筆發文的 6 小時互動數據，最多 20 筆
+                        [--workspace-id <id>]
+  oakmega-scrm statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]  依日期區間取得多筆發文的 6 小時互動數據（預設近 30 天）
                         [--workspace-id <id>]
 
   所有指令均可加 [--workspace-id <id>] 覆蓋 config 中的預設 workspace ID。
@@ -1481,7 +1694,6 @@ function main() {
   if (a === 'member' && b === 'list-recent-chatbot-triggered') return cmdMemberListRecentChatbotTriggered(argv.slice(2));
   if (a === 'member' && b === 'list-recent-deeplink-clicked') return cmdMemberListRecentDeeplinkClicked(argv.slice(2));
   if (a === 'broadcast' && b === 'search') return cmdBroadcastSearch(argv.slice(2));
-  if (a === 'broadcast' && b === 'get-statistics') return cmdBroadcastGetStatistics(argv.slice(2));
   if (a === 'chatbot' && b === 'list-recent-triggered') return cmdChatbotListRecentTriggered(argv.slice(2));
   if (a === 'chatbot' && b === 'list-member-triggered') return cmdChatbotListMemberTriggered(argv.slice(2));
   if (a === 'chatbot' && b === 'list-members-triggered-batch') return cmdChatbotListMembersTriggeredBatch(argv.slice(2));
@@ -1495,9 +1707,14 @@ function main() {
   if (a === 'activity-log' && b === 'list-deeplink-clicks') return cmdActivityLogListDeeplinkClicks(argv.slice(2));
   if (a === 'statistics' && b === 'get-workspace-member-overview') return cmdStatisticsGetWorkspaceMemberOverview(argv.slice(2));
   if (a === 'statistics' && b === 'get-line-friend-count-series') return cmdStatisticsGetLineFriendCountSeries(argv.slice(2));
+  if (a === 'statistics' && b === 'get-line-friend-count-total') return cmdStatisticsGetLineFriendCountTotal(argv.slice(2));
   if (a === 'statistics' && b === 'get-active-member-count-series') return cmdStatisticsGetActiveMemberCountSeries(argv.slice(2));
+  if (a === 'statistics' && b === 'get-active-member-count-total') return cmdStatisticsGetActiveMemberCountTotal(argv.slice(2));
   if (a === 'statistics' && b === 'get-member-interaction-count-series') return cmdStatisticsGetMemberInteractionCountSeries(argv.slice(2));
+  if (a === 'statistics' && b === 'get-member-interaction-count-total') return cmdStatisticsGetMemberInteractionCountTotal(argv.slice(2));
   if (a === 'statistics' && b === 'get-line-follow-insight') return cmdStatisticsGetLineFollowInsight(argv.slice(2));
+  if (a === 'statistics' && b === 'list-broadcast-six-hour-interaction-batch') return cmdStatisticsListBroadcastSixHourInteractionBatch(argv.slice(2));
+  if (a === 'statistics' && b === 'search-broadcast-six-hour-interaction') return cmdStatisticsSearchBroadcastSixHourInteraction(argv.slice(2));
 
   console.log(`未知指令：${a}`);
   printUsage();

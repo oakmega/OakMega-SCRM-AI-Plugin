@@ -30,7 +30,7 @@ description: >-
 
 只取 `status === 'published'` 的項目做分析；草稿在明細表裡標示但不計入 KPI。
 
-`line_broadcast_insight`、`six_hour_interaction` 與 `line_message_insight` 是由逐筆呼叫 `broadcast get-statistics` 補上的，未成功取得統計數據的發文，該筆的這些欄位視為缺值（KPI 加總時跳過，明細表對應欄位顯示「—」）。
+`line_broadcast_insight` 與 `line_message_insight` 已包含在 `broadcast search` 的回傳中；`six_hour_interaction` 則需另外呼叫 `statistics search-broadcast-six-hour-interaction`（同一段日期區間）或 `statistics list-broadcast-six-hour-interaction-batch`（已知的一批 broadcast id）補上。未成功取得統計數據的發文，該筆的這些欄位視為缺值（KPI 加總時跳過，明細表對應欄位顯示「—」）。
 
 ## 報告結構
 

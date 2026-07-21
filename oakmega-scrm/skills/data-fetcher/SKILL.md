@@ -72,11 +72,8 @@ tag list-members-batch --member-ids <id1,id2,...> [--workspace-id <id>]
 ### Broadcast
 
 ```bash
-# 搜尋時間範圍內、名稱包含關鍵字的發文 → reference/broadcast-search.md
+# 搜尋時間範圍內、名稱包含關鍵字的發文，已含開封率/點擊/影片播放數據 → reference/broadcast-search.md
 broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD> [--name <關鍵字>] [--limit <n>]
-
-# 單一發文完整統計（開封率 / 6 小時互動 / 影片播放） → reference/broadcast-get-statistics.md
-broadcast get-statistics --broadcast-id <id>
 ```
 
 ### Chatbot
@@ -135,14 +132,29 @@ statistics get-workspace-member-overview [--workspace-id <id>]
 # LINE 好友加入/封鎖逐日時序（區間最長 90 天，預設近 30 天） → reference/statistics-get-line-friend-count-series.md
 statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
+# LINE 好友加入/封鎖總數（整個區間加總的單一數字，非逐日序列，同上區間規則） → reference/statistics-get-line-friend-count-total.md
+statistics get-line-friend-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+
 # 活躍會員數逐日時序（同上區間規則） → reference/statistics-get-active-member-count-series.md
 statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+
+# 活躍會員總數（整個區間去重的單一數字，非逐日序列，同上區間規則） → reference/statistics-get-active-member-count-total.md
+statistics get-active-member-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
 # 會員互動數（訊息數/點擊數）逐日時序（同上區間規則） → reference/statistics-get-member-interaction-count-series.md
 statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
+# 會員互動總數（訊息數/點擊數，整個區間加總的單一數字，非逐日序列，同上區間規則） → reference/statistics-get-member-interaction-count-total.md
+statistics get-member-interaction-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+
 # LINE 官方帳號指定日期的追蹤者洞察 → reference/statistics-get-line-follow-insight.md
 statistics get-line-follow-insight --date <YYYY-MM-DD> [--workspace-id <id>]
+
+# 批次取得多筆發文的 6 小時互動數據（最多 20 筆） → reference/statistics-list-broadcast-six-hour-interaction-batch.md
+statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,...> [--workspace-id <id>]
+
+# 依日期區間取得多筆發文的 6 小時互動數據（區間規則同 broadcast search，預設近 30 天） → reference/statistics-search-broadcast-six-hour-interaction.md
+statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]
 ```
 
 ---
@@ -153,7 +165,7 @@ statistics get-line-follow-insight --date <YYYY-MM-DD> [--workspace-id <id>]
 
 - `workspace_member_id`（`--member-id`/`--member-ids`）：大部分 member 相關指令用的會員主鍵。
 - `social_media_member_id`（`--social-media-member-id`/`--social-media-member-ids`）：會員在某個渠道的綁定身分 id，只有 `service-center` 系列指令需要，**不等於 `workspace_member_id`**。
-- `broadcast_id`（`--broadcast-id`）：只有 `broadcast get-statistics` 需要。
+- `broadcast_id`（`--broadcast-ids`）：只有 `statistics list-broadcast-six-hour-interaction-batch` 需要（`statistics search-broadcast-six-hour-interaction` 用日期區間查詢，不需要 id）。
 
 ### 查詢 member-id
 
@@ -173,7 +185,7 @@ statistics get-line-follow-insight --date <YYYY-MM-DD> [--workspace-id <id>]
 
 入口：`broadcast search` 回傳每筆的 `id`。
 
-需要此 id 的指令：`broadcast get-statistics`。
+需要此 id 的指令：`statistics list-broadcast-six-hour-interaction-batch`。
 
 ### 補充
 
@@ -204,6 +216,6 @@ statistics get-line-follow-insight --date <YYYY-MM-DD> [--workspace-id <id>]
 - **跨指令通則**（詳細內容仍以個別 `reference/` 文件為準）：
   - **Batch vs Single**：batch 指令的回傳用 `"results"`（複數 key，逐一標示每個 id 的結果），single 指令用 `"result"`（單數 key）。
   - **`days` 型別差異**：single 指令的 `--days` 對應 query string，字串型別；batch 指令（`--member-ids`/`--*-ids`）的 `--days` 對應 request body，**int** 型別。
-  - **不存在的 id**：batch 指令對不屬於此 workspace 的 id，回傳該筆 `{"..._id": <id>, "error": "not_in_workspace"}`，不會拋 404。
+  - **不存在的 id**：batch 指令對不屬於此 workspace 的 id，回傳該筆 `{"..._id": <id>, "error": "not_in_workspace"}`，不會拋 404。例外：`statistics list-broadcast-six-hour-interaction-batch` 對不存在的 broadcast id 是直接從 `results` 省略，不回傳該筆，也不回傳 `not_in_workspace`——若請求的 id 數量與回傳筆數不一致，代表其中有 id 不屬於此 workspace。
   - **日期格式**：所有時間欄位格式為 `"YYYY-MM-DD HH:MM:SS"`（台北時間，+08:00）。
   - **Throttle**：list 類指令較嚴（5 次/分鐘/帳號），get / search 類較寬鬆（30 次/分鐘/帳號），短時間內大量呼叫可能被限流。

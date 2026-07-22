@@ -132,19 +132,19 @@ statistics get-workspace-member-overview [--workspace-id <id>]
 # LINE 好友加入/封鎖逐日時序（區間最長 100 天，預設近 30 天） → reference/statistics-get-line-friend-count-series.md
 statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
-# LINE 好友加入/封鎖總數（整個區間加總的單一數字，非逐日序列，同上區間規則） → reference/statistics-get-line-friend-count-total.md
+# LINE 好友加入/封鎖總數（整個區間加總的單一數字，非逐日序列，區間最長 100 天，預設近 30 天） → reference/statistics-get-line-friend-count-total.md
 statistics get-line-friend-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
-# 活躍會員數逐日時序（同上區間規則） → reference/statistics-get-active-member-count-series.md
+# 活躍會員數逐日時序（區間最長 100 天，預設近 30 天） → reference/statistics-get-active-member-count-series.md
 statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
-# 活躍會員總數（整個區間去重的單一數字，非逐日序列，同上區間規則） → reference/statistics-get-active-member-count-total.md
+# 活躍會員總數（整個區間去重的單一數字，非逐日序列，區間最長 100 天，預設近 30 天） → reference/statistics-get-active-member-count-total.md
 statistics get-active-member-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
-# 會員互動數（訊息數/點擊數）逐日時序（同上區間規則） → reference/statistics-get-member-interaction-count-series.md
+# 會員互動數（訊息數/點擊數）逐日時序（區間最長 100 天，預設近 30 天） → reference/statistics-get-member-interaction-count-series.md
 statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
-# 會員互動總數（訊息數/點擊數，整個區間加總的單一數字，非逐日序列，同上區間規則） → reference/statistics-get-member-interaction-count-total.md
+# 會員互動總數（訊息數/點擊數，整個區間加總的單一數字，非逐日序列，區間最長 100 天，預設近 30 天） → reference/statistics-get-member-interaction-count-total.md
 statistics get-member-interaction-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
 # LINE 官方帳號指定日期的追蹤者洞察 → reference/statistics-get-line-follow-insight.md
@@ -153,7 +153,7 @@ statistics get-line-follow-insight --date <YYYY-MM-DD> [--workspace-id <id>]
 # 批次取得多筆發文的 6 小時互動數據（最多 20 筆） → reference/statistics-list-broadcast-six-hour-interaction-batch.md
 statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,...> [--workspace-id <id>]
 
-# 依日期區間取得多筆發文的 6 小時互動數據（區間規則同 broadcast search，預設近 30 天） → reference/statistics-search-broadcast-six-hour-interaction.md
+# 依日期區間取得多筆發文的 6 小時互動數據（區間最長 100 天，預設近 30 天） → reference/statistics-search-broadcast-six-hour-interaction.md
 statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]
 ```
 

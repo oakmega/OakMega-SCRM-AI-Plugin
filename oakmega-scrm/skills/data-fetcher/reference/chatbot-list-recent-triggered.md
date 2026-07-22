@@ -5,7 +5,7 @@
 ```
 chatbot list-recent-triggered
   --days <n>              # [🔯 選填] 往回查詢天數，1~7，預設 7
-  --workspace-id <id>     # [🔯 選填] 指定 workspace
+  --profile <workspace_id>     # [🔯 選填] 指定要用哪一組 profile
 ```
 
 workspace 內最近 N 日有被觸發過的 chatbot 排行，依觸發次數降冪。

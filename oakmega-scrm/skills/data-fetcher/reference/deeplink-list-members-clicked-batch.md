@@ -6,7 +6,7 @@
 deeplink list-members-clicked-batch
   --member-ids <id1,id2,...>    # 必填，逗號分隔，最多 20 人
   --days <n>                     # [🔯 選填] 往回查詢天數，1~60，預設 60；int 型別（非字串）
-  --workspace-id <id>            # [🔯 選填] 指定 workspace
+  --profile <workspace_id>            # [🔯 選填] 指定要用哪一組 profile
 ```
 
 一次撈多個會員的 deeplink 點擊排行。

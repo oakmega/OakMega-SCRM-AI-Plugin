@@ -5,7 +5,7 @@
 ```
 service-center list-member-messages
   --social-media-member-id <id>    # 必填，注意是渠道綁定 ID（social_media_member_id），不是 workspace_member_id
-  --workspace-id <id>                # [🔯 選填] 指定 workspace
+  --profile <workspace_id>                # [🔯 選填] 指定要用哪一組 profile
 ```
 
 取得單一渠道成員的對話紀錄。保留 TEMPLATE / chatbot 觸發 / broadcast 訊息，僅排除 webhook 事件與客服系統事件。

@@ -5,7 +5,7 @@
 ```
 deeplink list-recent-clicked
   --days <n>              # [🔯 選填] 往回查詢天數，1~7，預設 7
-  --workspace-id <id>     # [🔯 選填] 指定 workspace
+  --profile <workspace_id>     # [🔯 選填] 指定要用哪一組 profile
 ```
 
 workspace 內最近 N 日有被點擊過的 deeplink 排行，依點擊次數降冪。

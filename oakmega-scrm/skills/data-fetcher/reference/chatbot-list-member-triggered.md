@@ -6,7 +6,7 @@
 chatbot list-member-triggered
   --member-id <id>        # 必填，會員 workspace_member_id
   --days <n>               # [🔯 選填] 往回查詢天數，1~60，預設 60
-  --workspace-id <id>     # [🔯 選填] 指定 workspace
+  --profile <workspace_id>     # [🔯 選填] 指定要用哪一組 profile
 ```
 
 某會員最近 N 日觸發過的 chatbot 排行，依觸發次數降冪。

@@ -26,43 +26,86 @@ const CONFIG_DIR = path.join(os.homedir(), '.config', 'oakmega-scrm');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json');
 
 // ---------- 設定檔讀寫 ----------
+//
+// 一組 API key 只綁定一個 workspace（後端規則），本機因此以「profile」
+// （workspace_id ↔ API key ↔ 別名 alias）為單位保存多組登入狀態：
+//   { profiles: { "<workspace_id>": { API_KEY, alias } }, activeProfile: "<workspace_id>" }
+// 舊版單一 API_KEY/WORKSPACE_ID 格式會在讀取時自動遷移成上述格式。
 
-function readConfig() {
-  try {
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
-    const obj = JSON.parse(raw);
-    return obj && typeof obj === 'object' ? obj : {};
-  } catch (_err) {
-    // 檔案不存在或解析失敗，一律視為「尚未設定」
-    return {};
-  }
-}
-
-function writeConfig(apiKey, workspaceId) {
+function writeRawConfig(obj) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true });
-  const existing = readConfig();
-  const payload = JSON.stringify({
-    ...existing,
-    API_KEY: apiKey,
-    WORKSPACE_ID: workspaceId,
-  }, null, 2) + '\n';
+  const payload = JSON.stringify(obj, null, 2) + '\n';
   fs.writeFileSync(CONFIG_PATH, payload, { mode: 0o600 });
   // writeFileSync 的 mode 只在「建立新檔」時生效；若檔案已存在，明確再 chmod 一次。
   fs.chmodSync(CONFIG_PATH, 0o600);
 }
 
-function getApiKey() {
+function readConfig() {
+  let obj;
+  try {
+    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+    obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') obj = {};
+  } catch (_err) {
+    // 檔案不存在或解析失敗，一律視為「尚未設定」
+    obj = {};
+  }
+
+  if (obj.profiles) return obj;
+
+  // 舊格式遷移：{ API_KEY, WORKSPACE_ID, ... } → { profiles: {...}, activeProfile }
+  if (typeof obj.API_KEY === 'string' && obj.API_KEY.trim() !== '' &&
+      (typeof obj.WORKSPACE_ID === 'string' || typeof obj.WORKSPACE_ID === 'number')) {
+    const workspaceId = String(obj.WORKSPACE_ID);
+    const migrated = { ...obj };
+    delete migrated.API_KEY;
+    delete migrated.WORKSPACE_ID;
+    migrated.profiles = { [workspaceId]: { API_KEY: obj.API_KEY, alias: '' } };
+    migrated.activeProfile = workspaceId;
+    writeRawConfig(migrated);
+    return migrated;
+  }
+
+  obj.profiles = {};
+  obj.activeProfile = null;
+  return obj;
+}
+
+function writeProfile(workspaceId, apiKey, alias) {
   const cfg = readConfig();
-  const key = cfg.API_KEY;
-  if (typeof key === 'string' && key.trim() !== '') return key;
+  cfg.profiles[workspaceId] = { API_KEY: apiKey, alias: alias || '' };
+  cfg.activeProfile = workspaceId;
+  writeRawConfig(cfg);
+}
+
+function setActiveProfile(workspaceId) {
+  const cfg = readConfig();
+  cfg.activeProfile = workspaceId;
+  writeRawConfig(cfg);
+}
+
+function getProfiles() {
+  return readConfig().profiles || {};
+}
+
+function getActiveProfileId() {
+  const id = readConfig().activeProfile;
+  return (typeof id === 'string' && id.trim() !== '') ? id : null;
+}
+
+function getApiKeyForProfile(workspaceId) {
+  const profile = getProfiles()[workspaceId];
+  if (profile && typeof profile.API_KEY === 'string' && profile.API_KEY.trim() !== '') return profile.API_KEY;
   return null;
 }
 
-function getWorkspaceId() {
-  const cfg = readConfig();
-  const id = cfg.WORKSPACE_ID;
-  if (typeof id === 'number' || (typeof id === 'string' && id.trim() !== '')) return String(id);
-  return null;
+function resolveWorkspaceId(explicitProfile) {
+  const workspaceId = explicitProfile || getActiveProfileId();
+  if (!workspaceId || !getProfiles()[workspaceId]) {
+    console.error('缺少或找不到 profile。請用 --profile <workspace_id> 指定，或執行 login / use-profile 設定。');
+    process.exit(1);
+  }
+  return workspaceId;
 }
 
 function getBaseUrl() {
@@ -79,9 +122,10 @@ function preview(key, n = 10) {
 // ---------- 子指令：auth status ----------
 
 function cmdAuthStatus() {
-  const key = getApiKey();
+  const activeId = getActiveProfileId();
+  const key = activeId ? getApiKeyForProfile(activeId) : null;
   if (key) {
-    console.log(`已登入。API_KEY: ${preview(key)}…（設定檔：${CONFIG_PATH}）`);
+    console.log(`已登入。目前使用 workspace ${activeId}，API_KEY: ${preview(key)}…（設定檔：${CONFIG_PATH}）`);
     process.exit(0);
   }
   console.log('尚未登入，請執行：oakmega-scrm login');
@@ -91,12 +135,13 @@ function cmdAuthStatus() {
 // ---------- 子指令：whoami（示意操作） ----------
 
 function cmdWhoami() {
-  const key = getApiKey();
+  const activeId = getActiveProfileId();
+  const key = activeId ? getApiKeyForProfile(activeId) : null;
   if (!key) {
     console.log('尚未登入，請先執行：oakmega-scrm login');
     process.exit(1);
   }
-  console.log(`API_KEY 前 10 碼：${preview(key)}`);
+  console.log(`目前 workspace：${activeId}，API_KEY 前 10 碼：${preview(key)}`);
   process.exit(0);
 }
 
@@ -150,7 +195,8 @@ function formPage(nonce) {
   p { font-size: 13px; color: #666; margin: 0 0 20px; line-height: 1.5; }
   label { font-size: 13px; color: #333; display: block; margin-bottom: 6px; }
   input[type=password],
-  input[type=number] { width: 100%; box-sizing: border-box; padding: 10px 12px;
+  input[type=number],
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 10px 12px;
           font-size: 14px; border: 1px solid #d0d3d8; border-radius: 8px; }
   .field { margin-bottom: 16px; }
   button { margin-top: 4px; width: 100%; padding: 11px; font-size: 14px;
@@ -162,7 +208,7 @@ function formPage(nonce) {
 <body>
   <div class="card">
     <h1>OakMega SCRM 設定</h1>
-    <p>請貼上你的 API key 並填入 Workspace ID。送出後會儲存在本機，不會經過任何對話。</p>
+    <p>請貼上你的 API key 並填入 Workspace ID。送出後會儲存在本機，不會經過任何對話。可同時新增多組不同 workspace 的設定，並在 CLI 之間切換。</p>
     <form method="POST" action="/submit?nonce=${encodeURIComponent(nonce)}">
       <div class="field">
         <label for="key">API key</label>
@@ -173,6 +219,10 @@ function formPage(nonce) {
         <label for="workspace_id">Workspace ID</label>
         <input id="workspace_id" name="workspace_id" type="number" min="1"
                placeholder="例如：42">
+      </div>
+      <div class="field">
+        <label for="alias">別名（選填，方便日後用客戶名稱切換）</label>
+        <input id="alias" name="alias" type="text" placeholder="例如：魚蹦興業">
       </div>
       <input type="hidden" name="nonce" value="${htmlEscape(nonce)}">
       <button type="submit">儲存設定</button>
@@ -257,6 +307,7 @@ function cmdLogin() {
         }
         const key = (fields.api_key || '').trim();
         const workspaceId = (fields.workspace_id || '').trim();
+        const alias = (fields.alias || '').trim();
         if (!key) {
           res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end('<p>API key 不可為空，請回上一頁重試。</p>');
@@ -268,7 +319,7 @@ function cmdLogin() {
           return;
         }
         try {
-          writeConfig(key, workspaceId);
+          writeProfile(workspaceId, key, alias);
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
           res.end('寫入設定檔失敗：' + err.message);
@@ -319,6 +370,36 @@ function cmdLogin() {
       server.close(() => process.exit(1));
     }
   }, 10 * 60 * 1000).unref();
+}
+
+// ---------- 子指令：list-profiles ----------
+
+function cmdListProfiles() {
+  const profiles = getProfiles();
+  const activeId = getActiveProfileId();
+  const out = Object.keys(profiles).map((workspaceId) => ({
+    workspace_id: workspaceId,
+    alias: profiles[workspaceId].alias || workspaceId,
+    active: workspaceId === activeId,
+  }));
+  console.log(JSON.stringify(out));
+  process.exit(0);
+}
+
+// ---------- 子指令：use-profile ----------
+
+function cmdUseProfile(argv) {
+  const workspaceId = argv[0];
+  const profiles = getProfiles();
+  if (!workspaceId || !profiles[workspaceId]) {
+    console.error(`找不到 workspace ${workspaceId || '(未提供)'}。目前可用的 profile：`);
+    console.error(JSON.stringify(Object.keys(profiles)));
+    process.exit(1);
+  }
+  setActiveProfile(workspaceId);
+  const alias = profiles[workspaceId].alias || workspaceId;
+  console.log(`已切換預設 workspace 為：${alias}（${workspaceId}）`);
+  process.exit(0);
 }
 
 // ---------- HTTP 工具 ----------
@@ -381,27 +462,17 @@ function apiPostRequest(urlStr, apiKey, bodyObj) {
 // ---------- 子指令：tag list-member-tags ----------
 
 async function cmdTagListMemberTags(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   // parse flags
   let workspaceId = null;
   let memberId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
   }
 
   // fallback to config
-  if (!workspaceId) workspaceId = getWorkspaceId();
-
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) {
     console.error('缺少 --member-id <workspace_member_id>');
     process.exit(1);
@@ -430,27 +501,17 @@ async function cmdTagListMemberTags(argv) {
 // ---------- 子指令：member search ----------
 
 async function cmdMemberSearch(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let query = null;
   let searchBy = null;
   let workspaceId = null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--query' && argv[i + 1]) query = argv[++i];
     else if (argv[i] === '--search-by' && argv[i + 1]) searchBy = argv[++i];
-    else if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!query) {
     console.error('缺少 --query <搜尋內容>');
     process.exit(1);
@@ -485,30 +546,21 @@ async function cmdMemberSearch(argv) {
 // ---------- 子指令：broadcast search ----------
 
 async function cmdBroadcastSearch(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let broadcastName = null;
   let startDt = null;
   let endDt = null;
   let limit = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--name' && argv[i + 1]) broadcastName = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
     else if (argv[i] === '--limit' && argv[i + 1]) limit = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!startDt) {
     console.error('缺少 --start-dt <YYYY-MM-DD>');
     process.exit(1);
@@ -546,22 +598,13 @@ async function cmdBroadcastSearch(argv) {
 // ---------- 子指令：statistics get-workspace-member-overview ----------
 
 async function cmdStatisticsGetWorkspaceMemberOverview(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
 
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-workspace-member-overview/`;
@@ -586,26 +629,17 @@ async function cmdStatisticsGetWorkspaceMemberOverview(argv) {
 // ---------- 子指令：statistics get-line-friend-count-series ----------
 
 async function cmdStatisticsGetLineFriendCountSeries(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let startDt = null;
   let endDt = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if ((startDt && !endDt) || (!startDt && endDt)) {
     console.error('--start-dt 與 --end-dt 需同時提供');
     process.exit(1);
@@ -641,26 +675,17 @@ async function cmdStatisticsGetLineFriendCountSeries(argv) {
 // ---------- 子指令：statistics get-line-friend-count-total ----------
 
 async function cmdStatisticsGetLineFriendCountTotal(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let startDt = null;
   let endDt = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if ((startDt && !endDt) || (!startDt && endDt)) {
     console.error('--start-dt 與 --end-dt 需同時提供');
     process.exit(1);
@@ -696,26 +721,17 @@ async function cmdStatisticsGetLineFriendCountTotal(argv) {
 // ---------- 子指令：statistics get-active-member-count-series ----------
 
 async function cmdStatisticsGetActiveMemberCountSeries(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let startDt = null;
   let endDt = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if ((startDt && !endDt) || (!startDt && endDt)) {
     console.error('--start-dt 與 --end-dt 需同時提供');
     process.exit(1);
@@ -751,26 +767,17 @@ async function cmdStatisticsGetActiveMemberCountSeries(argv) {
 // ---------- 子指令：statistics get-member-interaction-count-series ----------
 
 async function cmdStatisticsGetMemberInteractionCountSeries(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let startDt = null;
   let endDt = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if ((startDt && !endDt) || (!startDt && endDt)) {
     console.error('--start-dt 與 --end-dt 需同時提供');
     process.exit(1);
@@ -806,26 +813,17 @@ async function cmdStatisticsGetMemberInteractionCountSeries(argv) {
 // ---------- 子指令：statistics get-member-interaction-count-total ----------
 
 async function cmdStatisticsGetMemberInteractionCountTotal(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let startDt = null;
   let endDt = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if ((startDt && !endDt) || (!startDt && endDt)) {
     console.error('--start-dt 與 --end-dt 需同時提供');
     process.exit(1);
@@ -861,17 +859,14 @@ async function cmdStatisticsGetMemberInteractionCountTotal(argv) {
 // ---------- 子指令：member get-basic-info ----------
 
 async function cmdMemberGetBasicInfo(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <workspace_member_id>'); process.exit(1); }
 
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/get-member-basic-info/${memberId}/`;
@@ -885,17 +880,14 @@ async function cmdMemberGetBasicInfo(argv) {
 // ---------- 子指令：member get-channel-line ----------
 
 async function cmdMemberGetChannelLine(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <workspace_member_id>'); process.exit(1); }
 
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/get-member-line/${memberId}/`;
@@ -909,17 +901,14 @@ async function cmdMemberGetChannelLine(argv) {
 // ---------- 子指令：member get-channel-fb ----------
 
 async function cmdMemberGetChannelFb(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <workspace_member_id>'); process.exit(1); }
 
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/get-member-fb/${memberId}/`;
@@ -933,17 +922,14 @@ async function cmdMemberGetChannelFb(argv) {
 // ---------- 子指令：member get-channel-ig ----------
 
 async function cmdMemberGetChannelIg(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <workspace_member_id>'); process.exit(1); }
 
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/get-member-ig/${memberId}/`;
@@ -957,17 +943,14 @@ async function cmdMemberGetChannelIg(argv) {
 // ---------- 子指令：member get-channel-whatsapp ----------
 
 async function cmdMemberGetChannelWhatsapp(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <workspace_member_id>'); process.exit(1); }
 
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/get-member-whatsapp/${memberId}/`;
@@ -981,17 +964,14 @@ async function cmdMemberGetChannelWhatsapp(argv) {
 // ---------- 子指令：member list-recent-messaged ----------
 
 async function cmdMemberListRecentMessaged(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
 
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/list-recent-messaged-members/${params}`;
@@ -1005,17 +985,14 @@ async function cmdMemberListRecentMessaged(argv) {
 // ---------- 子指令：member list-recent-chatbot-triggered ----------
 
 async function cmdMemberListRecentChatbotTriggered(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
 
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/list-recent-chatbot-triggered-members/${params}`;
@@ -1029,17 +1006,14 @@ async function cmdMemberListRecentChatbotTriggered(argv) {
 // ---------- 子指令：member list-recent-deeplink-clicked ----------
 
 async function cmdMemberListRecentDeeplinkClicked(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
 
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/member/list-recent-deeplink-clicked-members/${params}`;
@@ -1053,17 +1027,14 @@ async function cmdMemberListRecentDeeplinkClicked(argv) {
 // ---------- 子指令：tag list-members-batch ----------
 
 async function cmdTagListMembersBatch(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberIdsStr = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-ids' && argv[i + 1]) memberIdsStr = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberIdsStr) { console.error('缺少 --member-ids <id1,id2,...>'); process.exit(1); }
 
   const memberIds = memberIdsStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
@@ -1081,24 +1052,15 @@ async function cmdTagListMembersBatch(argv) {
 // ---------- 子指令：statistics get-line-follow-insight ----------
 
 async function cmdStatisticsGetLineFollowInsight(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let date = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--date' && argv[i + 1]) date = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!date) {
     console.error('缺少 --date <YYYY-MM-DD>');
     process.exit(1);
@@ -1128,17 +1090,14 @@ async function cmdStatisticsGetLineFollowInsight(argv) {
 // ---------- 子指令：statistics list-broadcast-six-hour-interaction-batch ----------
 
 async function cmdStatisticsListBroadcastSixHourInteractionBatch(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let broadcastIdsStr = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--broadcast-ids' && argv[i + 1]) broadcastIdsStr = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!broadcastIdsStr) { console.error('缺少 --broadcast-ids <id1,id2,...>'); process.exit(1); }
 
   const broadcastIds = broadcastIdsStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
@@ -1156,28 +1115,19 @@ async function cmdStatisticsListBroadcastSixHourInteractionBatch(argv) {
 // ---------- 子指令：statistics search-broadcast-six-hour-interaction ----------
 
 async function cmdStatisticsSearchBroadcastSixHourInteraction(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let startDt = null;
   let endDt = null;
   let limit = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
     else if (argv[i] === '--limit' && argv[i + 1]) limit = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if ((startDt && !endDt) || (!startDt && endDt)) {
     console.error('--start-dt 與 --end-dt 需同時提供');
     process.exit(1);
@@ -1214,26 +1164,17 @@ async function cmdStatisticsSearchBroadcastSixHourInteraction(argv) {
 // ---------- 子指令：statistics get-active-member-count-total ----------
 
 async function cmdStatisticsGetActiveMemberCountTotal(argv) {
-  const key = getApiKey();
-  if (!key) {
-    console.error('尚未登入，請先執行：oakmega-scrm login');
-    process.exit(1);
-  }
-
   let workspaceId = null;
   let startDt = null;
   let endDt = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
     else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
   }
 
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) {
-    console.error('缺少 workspace ID。請用 --workspace-id <id> 指定，或重新執行 login 設定預設值。');
-    process.exit(1);
-  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if ((startDt && !endDt) || (!startDt && endDt)) {
     console.error('--start-dt 與 --end-dt 需同時提供');
     process.exit(1);
@@ -1269,19 +1210,16 @@ async function cmdStatisticsGetActiveMemberCountTotal(argv) {
 // ---------- 子指令：activity-log list-tag-changes ----------
 
 async function cmdActivityLogListTagChanges(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <id>'); process.exit(1); }
 
   const baseUrl = getBaseUrl();
@@ -1298,19 +1236,16 @@ async function cmdActivityLogListTagChanges(argv) {
 // ---------- 子指令：activity-log list-chatbot-triggers ----------
 
 async function cmdActivityLogListChatbotTriggers(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <id>'); process.exit(1); }
 
   const baseUrl = getBaseUrl();
@@ -1327,19 +1262,16 @@ async function cmdActivityLogListChatbotTriggers(argv) {
 // ---------- 子指令：activity-log list-deeplink-clicks ----------
 
 async function cmdActivityLogListDeeplinkClicks(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <id>'); process.exit(1); }
 
   const baseUrl = getBaseUrl();
@@ -1356,17 +1288,14 @@ async function cmdActivityLogListDeeplinkClicks(argv) {
 // ---------- 子指令：chatbot list-recent-triggered ----------
 
 async function cmdChatbotListRecentTriggered(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
 
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/chatbot/list-recent-triggered-chatbots/${params}`;
@@ -1380,19 +1309,16 @@ async function cmdChatbotListRecentTriggered(argv) {
 // ---------- 子指令：chatbot list-member-triggered ----------
 
 async function cmdChatbotListMemberTriggered(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <workspace_member_id>'); process.exit(1); }
 
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
@@ -1407,19 +1333,16 @@ async function cmdChatbotListMemberTriggered(argv) {
 // ---------- 子指令：chatbot list-members-triggered-batch ----------
 
 async function cmdChatbotListMembersTriggeredBatch(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberIdsStr = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-ids' && argv[i + 1]) memberIdsStr = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberIdsStr) { console.error('缺少 --member-ids <id1,id2,...>'); process.exit(1); }
 
   const memberIds = memberIdsStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
@@ -1440,17 +1363,14 @@ async function cmdChatbotListMembersTriggeredBatch(argv) {
 // ---------- 子指令：deeplink list-recent-clicked ----------
 
 async function cmdDeeplinkListRecentClicked(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
 
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/deeplink/list-recent-clicked-deeplinks/${params}`;
@@ -1464,19 +1384,16 @@ async function cmdDeeplinkListRecentClicked(argv) {
 // ---------- 子指令：deeplink list-member-clicked ----------
 
 async function cmdDeeplinkListMemberClicked(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberId = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-id' && argv[i + 1]) memberId = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberId) { console.error('缺少 --member-id <workspace_member_id>'); process.exit(1); }
 
   const params = days ? '?' + new URLSearchParams({ days }).toString() : '';
@@ -1491,19 +1408,16 @@ async function cmdDeeplinkListMemberClicked(argv) {
 // ---------- 子指令：deeplink list-members-clicked-batch ----------
 
 async function cmdDeeplinkListMembersClickedBatch(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let memberIdsStr = null;
   let days = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--member-ids' && argv[i + 1]) memberIdsStr = argv[++i];
     else if (argv[i] === '--days' && argv[i + 1]) days = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!memberIdsStr) { console.error('缺少 --member-ids <id1,id2,...>'); process.exit(1); }
 
   const memberIds = memberIdsStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
@@ -1524,17 +1438,14 @@ async function cmdDeeplinkListMembersClickedBatch(argv) {
 // ---------- 子指令：service-center list-member-messages ----------
 
 async function cmdServiceCenterListMemberMessages(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let socialMediaMemberId = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--social-media-member-id' && argv[i + 1]) socialMediaMemberId = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!socialMediaMemberId) { console.error('缺少 --social-media-member-id <social_media_member_id>'); process.exit(1); }
 
   const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/service-center/list-member-messages/${socialMediaMemberId}/`;
@@ -1548,17 +1459,14 @@ async function cmdServiceCenterListMemberMessages(argv) {
 // ---------- 子指令：service-center list-members-messages-batch ----------
 
 async function cmdServiceCenterListMembersMessagesBatch(argv) {
-  const key = getApiKey();
-  if (!key) { console.error('尚未登入，請先執行：oakmega-scrm login'); process.exit(1); }
-
   let workspaceId = null;
   let socialMediaMemberIdsStr = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--workspace-id' && argv[i + 1]) workspaceId = argv[++i];
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
     else if (argv[i] === '--social-media-member-ids' && argv[i + 1]) socialMediaMemberIdsStr = argv[++i];
   }
-  if (!workspaceId) workspaceId = getWorkspaceId();
-  if (!workspaceId) { console.error('缺少 workspace ID。'); process.exit(1); }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
   if (!socialMediaMemberIdsStr) { console.error('缺少 --social-media-member-ids <id1,id2,...>'); process.exit(1); }
 
   const socialMediaMemberIds = socialMediaMemberIdsStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
@@ -1580,14 +1488,16 @@ function printUsage() {
 
 用法：
   oakmega-scrm auth status                              檢查是否已登入（已登入 exit 0；未登入 exit 1）
-  oakmega-scrm login                                    開啟本機網頁表單，設定 API key 與 Workspace ID
-  oakmega-scrm whoami                                   印出 API_KEY 前 10 碼
+  oakmega-scrm login                                    開啟本機網頁表單，新增/更新一組 (API key, Workspace ID, 別名)
+  oakmega-scrm list-profiles                            列出所有已設定的 profile（JSON），標示目前啟用中的那組
+  oakmega-scrm use-profile <workspace_id>                切換「目前啟用」的預設 profile
+  oakmega-scrm whoami                                   印出目前啟用 profile 的 workspace 與 API_KEY 前 10 碼
 
   ── Member ──
   oakmega-scrm member search --query <q> --search-by <field>  搜尋會員
-                        [--workspace-id <id>]                  search-by: name | workspace_member_id | uuid
+                        [--profile <workspace_id>]                  search-by: name | workspace_member_id | uuid
   oakmega-scrm member get-basic-info --member-id <id>         取得會員主表欄位與自訂欄位
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm member get-channel-line --member-id <id>       取得會員的 LINE 渠道資訊（未綁定回 404）
   oakmega-scrm member get-channel-fb --member-id <id>         取得會員的 Facebook 渠道資訊
   oakmega-scrm member get-channel-ig --member-id <id>         取得會員的 Instagram 渠道資訊
@@ -1598,35 +1508,35 @@ function printUsage() {
 
   ── Tag ──
   oakmega-scrm tag list-member-tags --member-id <id>          取得 member 身上所有有效標籤
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm tag list-members-batch --member-ids <id1,id2,...>  批次取得多個 member 的標籤（最多 20 人）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
 
   ── Broadcast ──
   oakmega-scrm broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD>  搜尋發文（含開封/點擊/影片播放數據）
-                        [--name <關鍵字>] [--limit <n>] [--workspace-id <id>]
+                        [--name <關鍵字>] [--limit <n>] [--profile <workspace_id>]
 
   ── Chatbot ──
   oakmega-scrm chatbot list-recent-triggered [--days <1-7>]                          workspace 最近 N 日 chatbot 排行（預設 7 日）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm chatbot list-member-triggered --member-id <id> [--days <1-60>]        某 member 的 chatbot 觸發排行（預設 60 日）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm chatbot list-members-triggered-batch --member-ids <id1,id2,...>        批次，最多 20 人，每人最多 20 筆
-                        [--days <int,1-60>] [--workspace-id <id>]
+                        [--days <int,1-60>] [--profile <workspace_id>]
 
   ── Deeplink ──
   oakmega-scrm deeplink list-recent-clicked [--days <1-7>]                           workspace 最近 N 日 deeplink 排行（預設 7 日）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm deeplink list-member-clicked --member-id <id> [--days <1-60>]         某 member 的 deeplink 點擊排行（預設 60 日）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm deeplink list-members-clicked-batch --member-ids <id1,id2,...>         批次，最多 20 人，每人最多 20 筆
-                        [--days <int,1-60>] [--workspace-id <id>]
+                        [--days <int,1-60>] [--profile <workspace_id>]
 
   ── Service Center ──
   oakmega-scrm service-center list-member-messages --social-media-member-id <id>      取得單一渠道成員的對話紀錄（最多 500 筆）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm service-center list-members-messages-batch --social-media-member-ids <id1,id2,...>  批次，最多 20 人，每人最多 20 筆
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
 
   ── Activity Log ──
   oakmega-scrm activity-log list-tag-changes --member-id <id> [--days <1-60>]            標籤異動紀錄（預設 60 日）
@@ -1635,27 +1545,27 @@ function printUsage() {
 
   ── Statistics ──
   oakmega-scrm statistics get-workspace-member-overview                              workspace 會員/好友概況
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]   LINE 好友加入/封鎖逐日時序（預設近 30 天，最長 100 天）
-                        [--workspace-id <id>]
-  oakmega-scrm statistics get-line-friend-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  LINE 好友加入/封鎖總數（區間去重單一數字，預設近 30 天，最長 100 天）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
+  oakmega-scrm statistics get-line-friend-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  LINE 好友加入/封鎖總數（區間加總單一數字，預設近 30 天，最長 100 天）
+                        [--profile <workspace_id>]
   oakmega-scrm statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員數逐日時序（預設近 30 天，最長 100 天）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm statistics get-active-member-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員總數（區間去重單一數字，預設近 30 天，最長 100 天）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動數逐日時序（預設近 30 天，最長 100 天）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm statistics get-member-interaction-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動總數（區間加總單一數字，預設近 30 天，最長 100 天）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm statistics get-line-follow-insight --date <YYYY-MM-DD>                LINE 官方帳號指定日期的追蹤者洞察（followers/targetedReaches/blocks）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,...>  批次取得多筆發文的 6 小時互動數據，最多 20 筆
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
   oakmega-scrm statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]  依日期區間取得多筆發文的 6 小時互動數據（預設近 30 天，最長 100 天）
-                        [--workspace-id <id>]
+                        [--profile <workspace_id>]
 
-  所有指令均可加 [--workspace-id <id>] 覆蓋 config 中的預設 workspace ID。
+  所有指令均可加 [--profile <workspace_id>] 指定要用哪一組 profile（單次覆蓋，不影響預設）；不帶則使用目前啟用中的 profile。
 
 環境變數：
   OAKMEGA_BASE_URL   覆蓋 API base URL（不設則連 production：${PRODUCTION_BASE_URL}）
@@ -1682,6 +1592,8 @@ function main() {
   }
   if (a === 'login') return cmdLogin();
   if (a === 'whoami') return cmdWhoami();
+  if (a === 'list-profiles') return cmdListProfiles();
+  if (a === 'use-profile') return cmdUseProfile(argv.slice(1));
   if (a === 'tag' && b === 'list-member-tags') return cmdTagListMemberTags(argv.slice(2));
   if (a === 'tag' && b === 'list-members-batch') return cmdTagListMembersBatch(argv.slice(2));
   if (a === 'member' && b === 'search') return cmdMemberSearch(argv.slice(2));

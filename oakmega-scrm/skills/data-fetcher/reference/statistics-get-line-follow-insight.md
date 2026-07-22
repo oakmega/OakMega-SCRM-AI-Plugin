@@ -5,7 +5,7 @@
 ```
 statistics get-line-follow-insight
   --date <YYYY-MM-DD>       # 必填，查詢日期
-  --workspace-id <id>       # [🔯 選填] 覆蓋 config 中的預設 workspace ID
+  --profile <workspace_id>       # [🔯 選填] 指定要用哪一組 profile；不帶則使用目前啟用中的 profile
 ```
 
 取得 workspace 所串接 LINE 官方帳號在指定日期的 follow insight（追蹤者洞察數據）。**workspace 尚未串接 LINE 官方帳號時回 404；`--date` 為未來日期時回 417。**

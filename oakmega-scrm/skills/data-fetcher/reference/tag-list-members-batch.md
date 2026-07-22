@@ -5,7 +5,7 @@
 ```
 tag list-members-batch
   --member-ids <id1,id2,...>    # 必填，逗號分隔，最多 20 人
-  --workspace-id <id>            # [🔯 選填] 指定 workspace
+  --profile <workspace_id>            # [🔯 選填] 指定要用哪一組 profile
 ```
 
 一次撈多個會員的有效標籤。

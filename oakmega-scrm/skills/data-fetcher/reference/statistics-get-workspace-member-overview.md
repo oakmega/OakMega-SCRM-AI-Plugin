@@ -4,7 +4,7 @@
 
 ```
 statistics get-workspace-member-overview
-  --workspace-id <id>    # [🔯 選填] 覆蓋 config 中的預設 workspace ID
+  --profile <workspace_id>    # [🔯 選填] 指定要用哪一組 profile；不帶則使用目前啟用中的 profile
 ```
 
 取得 workspace 整體的會員/好友概況數據。

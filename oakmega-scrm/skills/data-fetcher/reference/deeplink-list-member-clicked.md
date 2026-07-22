@@ -6,7 +6,7 @@
 deeplink list-member-clicked
   --member-id <id>        # 必填，會員 workspace_member_id
   --days <n>               # [🔯 選填] 往回查詢天數，1~60，預設 60
-  --workspace-id <id>     # [🔯 選填] 指定 workspace
+  --profile <workspace_id>     # [🔯 選填] 指定要用哪一組 profile
 ```
 
 某會員最近 N 日點擊過的 deeplink 排行，依點擊次數降冪。結構同 workspace 排行。

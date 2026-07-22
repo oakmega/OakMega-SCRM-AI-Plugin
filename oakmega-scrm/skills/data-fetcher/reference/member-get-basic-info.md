@@ -5,7 +5,7 @@
 ```
 member get-basic-info
   --member-id <id>       # 必填，會員 workspace_member_id
-  --workspace-id <id>    # [🔯 選填] 指定 workspace
+  --profile <workspace_id>    # [🔯 選填] 指定要用哪一組 profile
 ```
 
 取得會員主表欄位、自訂欄位、各渠道是否綁定。不含 tag 與渠道明細（渠道明細請用 `member get-channel-*`）。

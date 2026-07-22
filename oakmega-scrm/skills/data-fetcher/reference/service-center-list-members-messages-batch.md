@@ -5,7 +5,7 @@
 ```
 service-center list-members-messages-batch
   --social-media-member-ids <id1,id2,...>    # 必填，逗號分隔，最多 20 人，注意是渠道綁定 ID
-  --workspace-id <id>                          # [🔯 選填] 指定 workspace
+  --profile <workspace_id>                          # [🔯 選填] 指定要用哪一組 profile
 ```
 
 一次撈多個渠道成員的核心對話紀錄。相較單一查詢版本，**額外排除 TEMPLATE、chatbot 觸發訊息、broadcast**。

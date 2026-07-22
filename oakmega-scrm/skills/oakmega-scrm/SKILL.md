@@ -58,9 +58,25 @@ node "$CLAUDE_PLUGIN_ROOT/bin/oakmega-scrm.js" <command>
 
    這會啟動本機網頁表單並自動開啟瀏覽器。請明確告訴使用者：
 
-   > 請在自動打開的瀏覽器視窗貼上你的 API key 完成設定（若沒自動開，請手動貼上終端機印出的網址）。
+   > 請在自動打開的瀏覽器視窗貼上你的 API key 完成設定（若沒自動開，請手動貼上終端機印出的網址）。可以順便填寫別名，方便之後用客戶名稱切換。
 
 3. 使用者完成後，重跑 `auth status` 確認已登入，再繼續。
+
+## 新增客戶 / 切換預設 workspace
+
+本機可能同時存有多組 (workspace_id, API key, 別名) 的 profile（一把 API key 只綁定一個 workspace）。依使用者意圖觸發：
+
+- 使用者說「加一個新客戶的 API key」「多綁一組 key」等**新增/更新**意圖 → 呼叫：
+  ```
+  node "${CLAUDE_PLUGIN_ROOT}/bin/oakmega-scrm.js" login
+  ```
+  行為同 Auth bootstrap 的 `login`，會新增一組 profile（若 workspace_id 已存在則視為刷新該組的 key/別名），不會覆蓋其他已存在的 profile。
+
+- 使用者說「以後預設都看 XX」「幫我切換預設 workspace」等**永久切換預設**意圖 → 先視需要呼叫 `list-profiles` 解析出對應的 workspace_id,再呼叫：
+  ```
+  node "${CLAUDE_PLUGIN_ROOT}/bin/oakmega-scrm.js" use-profile <workspace_id>
+  ```
+  這與單純「這次順便查一下另一個客戶」不同——後者屬於單次查詢的 profile 解析,交由 `skills/data-fetcher/SKILL.md` 處理，不應呼叫 `use-profile`。
 
 ## 操作
 

@@ -29,16 +29,28 @@ params: { ... }
 
 ---
 
+## Profile 解析
+
+本機可能同時存有多組 (workspace_id, API key, 別名) 的 profile（一把 API key 只綁定一個 workspace，因此切換 workspace 等同於切換 profile）。所有指令都可加 `[--profile <workspace_id>]` 選擇要用哪一組；不帶則使用目前啟用中的 profile。
+
+判斷規則：
+
+1. **使用者沒有指名任何客戶/workspace** → 不需要呼叫 `list-profiles`，直接照常呼叫指令，不帶 `--profile`（CLI 端會自動用目前啟用中的 profile）。
+2. **使用者的描述中出現看起來像客戶/公司名的詞**（例如「魚蹦興業」「王品集團」）→ 呼叫 `oakmega-scrm list-profiles`，取得 JSON `[{"workspace_id","alias","active"}]`，把使用者提到的名稱與其中的 `alias`／`workspace_id` 比對：
+   - **剛好對到一組** → 之後本輪對話裡所有 `data-fetcher` 呼叫都帶上 `--profile <workspace_id>`。這個選擇僅在**當輪對話內暫存**，不要呼叫 `use-profile`，不影響 CLI 的全域預設。
+   - **對不到任何候選，或同時對到多組** → 停下來，列出 `list-profiles` 回傳的候選 alias，詢問使用者要用哪一組，不要自行猜測執行。
+3. **使用者明確表達「以後」「之後預設」「幫我切換」等改變預設意圖**（而不只是這次順便查一下）→ 這已超出 `data-fetcher` 的職責，交由呼叫端（例如 `oakmega-scrm` skill）呼叫 `use-profile <workspace_id>` 真正切換預設，`data-fetcher` 本身不做這件事。
+
 ## 可用指令一覽
 
 ### Member
 
 ```bash
 # 搜尋會員 → reference/member-search.md
-member search --query <q> --search-by <name|workspace_member_id|uuid> [--workspace-id <id>]
+member search --query <q> --search-by <name|workspace_member_id|uuid> [--profile <workspace_id>]
 
 # 查詢會員主表 → reference/member-get-basic-info.md
-member get-basic-info --member-id <id> [--workspace-id <id>]
+member get-basic-info --member-id <id> [--profile <workspace_id>]
 
 # 查詢 LINE 渠道會員資訊（未綁定回 404）→ reference/member-get-channel-line.md
 member get-channel-line --member-id <id>
@@ -63,10 +75,10 @@ member list-recent-deeplink-clicked [--days <n>]
 
 ```bash
 # 單一會員標籤 → reference/tag-list-member-tags.md
-tag list-member-tags --member-id <id> [--workspace-id <id>]
+tag list-member-tags --member-id <id> [--profile <workspace_id>]
 
 # 批次（最多 20 人） → reference/tag-list-members-batch.md
-tag list-members-batch --member-ids <id1,id2,...> [--workspace-id <id>]
+tag list-members-batch --member-ids <id1,id2,...> [--profile <workspace_id>]
 ```
 
 ### Broadcast
@@ -80,36 +92,36 @@ broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD> [--name <關鍵�
 
 ```bash
 # workspace 最近 N 日 chatbot 排行，依觸發次數降冪（days: 1~7，預設 7） → reference/chatbot-list-recent-triggered.md
-chatbot list-recent-triggered [--days <n>] [--workspace-id <id>]
+chatbot list-recent-triggered [--days <n>] [--profile <workspace_id>]
 
 # 單一會員的 chatbot 觸發排行（days: 1~60，預設 60） → reference/chatbot-list-member-triggered.md
-chatbot list-member-triggered --member-id <id> [--days <n>] [--workspace-id <id>]
+chatbot list-member-triggered --member-id <id> [--days <n>] [--profile <workspace_id>]
 
 # 批次（最多 20 人，days 為 int） → reference/chatbot-list-members-triggered-batch.md
-chatbot list-members-triggered-batch --member-ids <id1,id2,...> [--days <n>] [--workspace-id <id>]
+chatbot list-members-triggered-batch --member-ids <id1,id2,...> [--days <n>] [--profile <workspace_id>]
 ```
 
 ### Deeplink
 
 ```bash
 # workspace 最近 N 日 deeplink 排行，依點擊次數降冪（days: 1~7，預設 7） → reference/deeplink-list-recent-clicked.md
-deeplink list-recent-clicked [--days <n>] [--workspace-id <id>]
+deeplink list-recent-clicked [--days <n>] [--profile <workspace_id>]
 
 # 單一會員的 deeplink 點擊排行（days: 1~60，預設 60） → reference/deeplink-list-member-clicked.md
-deeplink list-member-clicked --member-id <id> [--days <n>] [--workspace-id <id>]
+deeplink list-member-clicked --member-id <id> [--days <n>] [--profile <workspace_id>]
 
 # 批次（最多 20 人，days 為 int） → reference/deeplink-list-members-clicked-batch.md
-deeplink list-members-clicked-batch --member-ids <id1,id2,...> [--days <n>] [--workspace-id <id>]
+deeplink list-members-clicked-batch --member-ids <id1,id2,...> [--days <n>] [--profile <workspace_id>]
 ```
 
 ### Service Center
 
 ```bash
 # 單一渠道會員的對話紀錄（以 social_media_member_id 為鍵，最多 500 筆） → reference/service-center-list-member-messages.md
-service-center list-member-messages --social-media-member-id <id> [--workspace-id <id>]
+service-center list-member-messages --social-media-member-id <id> [--profile <workspace_id>]
 
 # 批次（最多 20 人，每人最多 20 筆） → reference/service-center-list-members-messages-batch.md
-service-center list-members-messages-batch --social-media-member-ids <id1,id2,...> [--workspace-id <id>]
+service-center list-members-messages-batch --social-media-member-ids <id1,id2,...> [--profile <workspace_id>]
 ```
 
 ### Activity Log
@@ -127,7 +139,7 @@ activity-log list-deeplink-clicks   --member-id <id> [--days <1-60>]
 
 ```bash
 # workspace 會員/好友概況 → reference/statistics-get-workspace-member-overview.md
-statistics get-workspace-member-overview [--workspace-id <id>]
+statistics get-workspace-member-overview [--profile <workspace_id>]
 
 # LINE 好友加入/封鎖逐日時序（區間最長 100 天，預設近 30 天） → reference/statistics-get-line-friend-count-series.md
 statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
@@ -148,10 +160,10 @@ statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-
 statistics get-member-interaction-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
 # LINE 官方帳號指定日期的追蹤者洞察 → reference/statistics-get-line-follow-insight.md
-statistics get-line-follow-insight --date <YYYY-MM-DD> [--workspace-id <id>]
+statistics get-line-follow-insight --date <YYYY-MM-DD> [--profile <workspace_id>]
 
 # 批次取得多筆發文的 6 小時互動數據（最多 20 筆） → reference/statistics-list-broadcast-six-hour-interaction-batch.md
-statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,...> [--workspace-id <id>]
+statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,...> [--profile <workspace_id>]
 
 # 依日期區間取得多筆發文的 6 小時互動數據（區間最長 100 天，預設近 30 天） → reference/statistics-search-broadcast-six-hour-interaction.md
 statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]
@@ -211,7 +223,7 @@ statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--en
 - **超出範圍不查詢**：若使用者想要的資料對應不到本文件列出的任一指令，直接回報「此資料不在 data-fetcher 支援範圍內」，不要嘗試呼叫任何未列出的指令或去源碼裡找替代方法。
 - **禁止猜測／枚舉 id**：`workspace_member_id`、`social_media_member_id`、`broadcast_id` 等任何 id，只能使用某個入口指令（見「API 呼叫順序與依賴」）實際回傳的值。這些 id **不是依建立時間或流水順序遞增的流水號**，數值大小與資料存在與否、發文先後順序無關，所以即使已經拿到一批確切的 id（例如 `broadcast search` 回傳的多筆 `id`），也**不得**再取這批 id 的最大值／最小值去推算中間可能存在的其他 id 並逐一嘗試查詢；只查詢已知確實存在、且使用者需要的那些 id。若還需要更多資料，回頭呼叫對應的入口指令（如放寬 `--start-dt`/`--end-dt`、調整 `--limit`）取得更多確切 id，而不是自行遞增/遞減數字去試。
 - **錯誤代碼處理**：
-  - CLI 回傳 `401` 或 `403`：不要重試、不要換 workspace-id 或其他參數嘗試繞過，直接回報請使用者檢查 API Key 是否正確／有效，若確認無誤仍失敗，請聯絡 OakMega 窗口確認權限。
+  - CLI 回傳 `401` 或 `403`：不要重試、不要換 `--profile` 或其他參數嘗試繞過，直接回報請使用者檢查 API Key 是否正確／有效，若確認無誤仍失敗，請聯絡 OakMega 窗口確認權限。
   - CLI 回傳 `417`：直接回報請使用者修改查詢條件（例如調整 `--days`、`--limit`、日期範圍等），不要自行重試不同參數組合。
 - **跨指令通則**（詳細內容仍以個別 `reference/` 文件為準）：
   - **Batch vs Single**：batch 指令的回傳用 `"results"`（複數 key，逐一標示每個 id 的結果），single 指令用 `"result"`（單數 key）。

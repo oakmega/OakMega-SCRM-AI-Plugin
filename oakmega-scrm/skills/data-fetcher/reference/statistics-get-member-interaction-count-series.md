@@ -6,7 +6,7 @@
 statistics get-member-interaction-count-series
   --start-dt <YYYY-MM-DD>   # [🔯 選填] 查詢起始日期。需與 --end-dt 同時提供，否則 CLI 端會直接報錯；區間最長 100 天；都未提供則預設查最近 30 天
   --end-dt <YYYY-MM-DD>     # [🔯 選填] 查詢結束日期。需與 --start-dt 同時提供
-  --workspace-id <id>       # [🔯 選填] 覆蓋 config 中的預設 workspace ID
+  --profile <workspace_id>       # [🔯 選填] 指定要用哪一組 profile；不帶則使用目前啟用中的 profile
 ```
 
 取得 workspace 逐日的會員互動數時序資料（傳訊息數、追蹤連結點擊數）。

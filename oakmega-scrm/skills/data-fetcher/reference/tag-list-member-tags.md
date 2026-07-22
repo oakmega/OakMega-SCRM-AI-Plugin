@@ -5,7 +5,7 @@
 ```
 tag list-member-tags
   --member-id <id>       # 必填，會員 workspace_member_id
-  --workspace-id <id>    # [🔯 選填] 指定 workspace
+  --profile <workspace_id>    # [🔯 選填] 指定要用哪一組 profile
 ```
 
 取得會員身上所有有效標籤（不含已刪除的 tag / tag_dir），依更新時間降冪。

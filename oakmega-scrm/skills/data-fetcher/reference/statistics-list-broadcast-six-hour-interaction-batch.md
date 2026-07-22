@@ -5,7 +5,7 @@
 ```
 statistics list-broadcast-six-hour-interaction-batch
   --broadcast-ids <id1,id2,...>    # 必填，逗號分隔，最多 20 筆
-  --workspace-id <id>               # [🔯 選填] 指定 workspace
+  --profile <workspace_id>               # [🔯 選填] 指定要用哪一組 profile
 ```
 
 批次取得多筆發文的 6 小時互動數據（發文後 6 小時內的好友加入/封鎖/互動數）。

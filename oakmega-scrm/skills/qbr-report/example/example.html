@@ -243,9 +243,9 @@
     <!-- 每一格「數值＋變化量」都要用 mrow/mval/mdelta 包起來（見上方 CSS 註解），不要寫成純文字的
          「0（+-0）」，否則不同位數的數字會讓整欄變化量歪掉。
          變化量（mdelta 內文字）顏色規則：
-         - 增加為正面表現的指標（活躍人數、活躍率）→ 增加(+)用 class="delta up"（綠），減少(-)用 class="delta down"（紅）。
+         - 增加為正面表現的指標（有效（目標）好友數、活躍人數、活躍率）→ 增加(+)用 class="delta up"（綠），減少(-)用 class="delta down"（紅）。
          - 增加為負面表現的指標（封鎖數、封鎖率）→ 方向相反：增加(+)用 class="delta down"（紅），減少(-)用 class="delta up"（綠）。
-         - 總好友數、有效（目標）好友數沒有好壞方向，變化量不套色。
+         - 總好友數沒有好壞方向，變化量不套色。
          - 變化量為 0 時不套色（維持預設文字色）。
          寫法範例：<span class="mrow"><span class="mval">0</span><span class="mdelta">（<span class="delta up">+0</span>）</span></span> -->
     <div class="table-scroll">
@@ -307,6 +307,8 @@
   </div>
 
   <h2 class="section-title">二、好友成長分析</h2>
+  <div class="kpi-grid" id="kpiFriends"></div>
+
   <div class="card">
     <div class="card-head">
       <h2>每日新增／封鎖趨勢</h2>
@@ -501,6 +503,9 @@ const friendSeries = [
 
 const overview = { followers: 0, active_line_member_count: 0, blocks: 0, active_member_count: 0 };
 
+// 範本：statistics get-line-friend-count-total 回傳的本期加總（若本期超過 90 天需分段查詢後三欄位分別加總）
+const friendTotal = { line_join_count: 0, line_block_count: 0, line_net_count: 0 };
+
 // ---------- KPI tiles: account ----------
 const blockRate = overview.followers ? (overview.blocks/overview.followers*100) : 0;
 const activeRate = overview.followers ? (overview.active_member_count/overview.followers*100) : 0;
@@ -574,6 +579,25 @@ kpisBroadcast.forEach(k => {
   el.className = 'kpi';
   el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div>`;
   kpiBroadcastGrid.appendChild(el);
+});
+
+// ---------- KPI tiles: 好友成長分析 ----------
+function signed(n) { return (n >= 0 ? '+' : '') + n.toFixed(1); }
+const friendDays = friendSeries.length;
+const totalJoin = friendTotal.line_join_count;
+const totalBlock = friendTotal.line_block_count;
+const totalNet = friendTotal.line_net_count;
+const kpisFriends = [
+  { label: '新增好友總數', value: fmt(totalJoin), sub: `平均每日 ${(totalJoin/friendDays).toFixed(1)} 人` },
+  { label: '封鎖好友總數', value: fmt(totalBlock), sub: `平均每日 ${(totalBlock/friendDays).toFixed(1)} 人` },
+  { label: '好友淨成長', value: fmt(totalNet), sub: `平均每日 ${signed(totalNet/friendDays)} 人` },
+];
+const kpiFriendsGrid = document.getElementById('kpiFriends');
+kpisFriends.forEach(k => {
+  const el = document.createElement('div');
+  el.className = 'kpi';
+  el.innerHTML = `<div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub">${k.sub}</div>`;
+  kpiFriendsGrid.appendChild(el);
 });
 
 // ---------- Chart engine (SVG stacked/grouped bar chart + optional line overlay) ----------

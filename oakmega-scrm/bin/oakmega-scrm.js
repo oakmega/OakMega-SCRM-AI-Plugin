@@ -1636,23 +1636,23 @@ function printUsage() {
   ── Statistics ──
   oakmega-scrm statistics get-workspace-member-overview                              workspace 會員/好友概況
                         [--workspace-id <id>]
-  oakmega-scrm statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]   LINE 好友加入/封鎖逐日時序（預設近 30 天，最長 90 天）
+  oakmega-scrm statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]   LINE 好友加入/封鎖逐日時序（預設近 30 天，最長 100 天）
                         [--workspace-id <id>]
-  oakmega-scrm statistics get-line-friend-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  LINE 好友加入/封鎖總數（區間加總單一數字，同上區間規則）
+  oakmega-scrm statistics get-line-friend-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  LINE 好友加入/封鎖總數（區間去重單一數字，預設近 30 天，最長 100 天）
                         [--workspace-id <id>]
-  oakmega-scrm statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員數逐日時序（同上）
+  oakmega-scrm statistics get-active-member-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員數逐日時序（預設近 30 天，最長 100 天）
                         [--workspace-id <id>]
-  oakmega-scrm statistics get-active-member-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員總數（區間去重單一數字，同上區間規則）
+  oakmega-scrm statistics get-active-member-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  活躍會員總數（區間去重單一數字，預設近 30 天，最長 100 天）
                         [--workspace-id <id>]
-  oakmega-scrm statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動數逐日時序（同上）
+  oakmega-scrm statistics get-member-interaction-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動數逐日時序（預設近 30 天，最長 100 天）
                         [--workspace-id <id>]
-  oakmega-scrm statistics get-member-interaction-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動總數（區間加總單一數字，同上區間規則）
+  oakmega-scrm statistics get-member-interaction-count-total [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  會員互動總數（區間加總單一數字，預設近 30 天，最長 100 天）
                         [--workspace-id <id>]
   oakmega-scrm statistics get-line-follow-insight --date <YYYY-MM-DD>                LINE 官方帳號指定日期的追蹤者洞察（followers/targetedReaches/blocks）
                         [--workspace-id <id>]
   oakmega-scrm statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,...>  批次取得多筆發文的 6 小時互動數據，最多 20 筆
                         [--workspace-id <id>]
-  oakmega-scrm statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]  依日期區間取得多筆發文的 6 小時互動數據（預設近 30 天）
+  oakmega-scrm statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]  依日期區間取得多筆發文的 6 小時互動數據（預設近 30 天，最長 100 天）
                         [--workspace-id <id>]
 
   所有指令均可加 [--workspace-id <id>] 覆蓋 config 中的預設 workspace ID。

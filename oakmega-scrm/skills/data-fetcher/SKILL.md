@@ -72,7 +72,7 @@ tag list-members-batch --member-ids <id1,id2,...> [--workspace-id <id>]
 ### Broadcast
 
 ```bash
-# 搜尋時間範圍內、名稱包含關鍵字的發文，已含開封率/點擊/影片播放數據 → reference/broadcast-search.md
+# 搜尋時間範圍內、名稱包含關鍵字的發文，已含開封率/點擊/影片播放數據（區間最長 100 天） → reference/broadcast-search.md
 broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD> [--name <關鍵字>] [--limit <n>]
 ```
 
@@ -129,7 +129,7 @@ activity-log list-deeplink-clicks   --member-id <id> [--days <1-60>]
 # workspace 會員/好友概況 → reference/statistics-get-workspace-member-overview.md
 statistics get-workspace-member-overview [--workspace-id <id>]
 
-# LINE 好友加入/封鎖逐日時序（區間最長 90 天，預設近 30 天） → reference/statistics-get-line-friend-count-series.md
+# LINE 好友加入/封鎖逐日時序（區間最長 100 天，預設近 30 天） → reference/statistics-get-line-friend-count-series.md
 statistics get-line-friend-count-series [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 
 # LINE 好友加入/封鎖總數（整個區間加總的單一數字，非逐日序列，同上區間規則） → reference/statistics-get-line-friend-count-total.md

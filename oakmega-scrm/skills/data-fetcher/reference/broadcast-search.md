@@ -4,7 +4,7 @@
 
 ```
 broadcast search
-  --start-dt <YYYY-MM-DD>   # 必填，查詢起始日期（Taipei 時區）；對應後端 broadcast_start_dt，需與 --end-dt 同時提供，否則 417
+  --start-dt <YYYY-MM-DD>   # 必填，查詢起始日期（Taipei 時區）；對應後端 broadcast_start_dt，需與 --end-dt 同時提供，否則 417；區間最長 100 天
   --end-dt <YYYY-MM-DD>     # 必填，查詢結束日期（Taipei 時區）；對應後端 broadcast_end_dt，需與 --start-dt 同時提供
   --name <keyword>          # [🔯 選填] 依發文名稱模糊搜尋；對應後端 broadcast_name
   --limit <n>                # [🔯 選填] 回傳筆數上限，1~100，預設 50

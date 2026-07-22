@@ -27,14 +27,14 @@
   - 呼叫方式：帳號總覽 4 期（-3～本期）各呼叫一次，`--date` 設為該期期末日，一次呼叫同時拿到總好友數、有效好友數與封鎖數三個欄位
 
 - `statistics get-active-member-count-total`
-  - 參數：`--start-dt`／`--end-dt`（必須成對提供，單次區間最長 90 天），`--workspace-id`（選填）
+  - 參數：`--start-dt`／`--end-dt`（必須成對提供，單次區間最長 100 天），`--workspace-id`（選填）
   - 用途：帳號總覽分析的活躍人數，取該期區間去重後的 `active_member_count`
   - 呼叫方式：4 期各呼叫一次
 
 - `statistics get-line-friend-count-series`
-  - 參數：`--start-dt`／`--end-dt`（必須成對提供，單次區間最長 90 天），`--workspace-id`（選填）
+  - 參數：`--start-dt`／`--end-dt`（必須成對提供，單次區間最長 100 天），`--workspace-id`（選填）
   - 用途：好友成長分析的每日新增／封鎖／淨成長、平均值、新增／封鎖排名
-  - 呼叫方式：只需涵蓋本期區間，一次查完；若本期天數超過 90 天（例如季報），要分段查詢再拼接
+  - 呼叫方式：只需涵蓋本期區間，一次查完；若本期天數超過 100 天（例如季報），要分段查詢再拼接
 
 - `broadcast search`
   - 參數：`--start-dt`／`--end-dt`（必填），`--name`（選填），`--limit`（選填，1～100，預設 50，單次最多回傳 100 筆）

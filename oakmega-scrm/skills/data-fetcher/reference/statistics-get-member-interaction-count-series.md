@@ -4,7 +4,7 @@
 
 ```
 statistics get-member-interaction-count-series
-  --start-dt <YYYY-MM-DD>   # [🔯 選填] 查詢起始日期。需與 --end-dt 同時提供，否則 CLI 端會直接報錯；區間最長 90 天；都未提供則預設查最近 30 天
+  --start-dt <YYYY-MM-DD>   # [🔯 選填] 查詢起始日期。需與 --end-dt 同時提供，否則 CLI 端會直接報錯；區間最長 100 天；都未提供則預設查最近 30 天
   --end-dt <YYYY-MM-DD>     # [🔯 選填] 查詢結束日期。需與 --start-dt 同時提供
   --workspace-id <id>       # [🔯 選填] 覆蓋 config 中的預設 workspace ID
 ```

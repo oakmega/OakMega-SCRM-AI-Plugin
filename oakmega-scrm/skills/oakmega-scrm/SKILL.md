@@ -1,6 +1,5 @@
 ---
 name: oakmega-scrm
-context: fork
 description: 操作「OakMega SCRM」後台專用。僅在使用者明確提到 OakMega SCRM（或已在處理 OakMega SCRM 的客戶、對話、資料）時使用：例如登入/設定 OakMega SCRM、查詢或管理其客戶與對話。透過內附 oakmega-scrm CLI 執行，API key 以本機網頁表單輸入。不要用於一般性的「登入」「查客戶」需求，也不要用於其他 CRM / 系統。
 ---
 

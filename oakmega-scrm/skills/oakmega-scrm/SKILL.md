@@ -36,7 +36,11 @@ node "$CLAUDE_PLUGIN_ROOT/bin/oakmega-scrm.js" <command>
 
 預設將結果整理成人類可讀格式回覆（摘要、表格、條列等）。
 若呼叫端在 context 中明確指定 `output: json`，改為回傳 CLI 的 raw JSON 原文，不做任何格式轉換。
-不要回傳 CLI 的參數或是 result 的英文命名，要轉化成 OakMega SCRM 使用者能理解的功能名詞。
+不要提到 CLI 的名稱、指令、參數或是 result 的英文命名，要轉化成 OakMega SCRM 使用者能理解的功能名詞。**這條規則適用於你輸出的所有文字**，不只是回報查詢結果時，也包含：說明你正在做什麼、解釋為什麼缺資料、或詢問使用者要不要讓你去查/執行某個動作時。
+
+- 例如不要說「接下來我要查看 member_id 並確認他目前的 LINE 狀態是否為 BLOCKED」，而是要說「接下來我要查看這位會員並確認他的 LINE 是否為封鎖」
+- 例如不要說「要不要幫你去查 statistics get-workspace-member-overview 這個 API,看能不能拿到全 workspace 的封鎖相關數字來做比較?」，而是要說「要不要我幫你查一下全 workspace 的會員概況，抓出封鎖相關的數字來跟這個標籤做比較?」
+- 遇到指令/參數名稱時，先在心裡把它翻譯成對應的業務語言（例如 workspace 會員總覽、封鎖率、標籤名單...）再輸出，不要直接複製指令或參數字面文字。
 
 ## Auth bootstrap（任何操作前都先做）
 

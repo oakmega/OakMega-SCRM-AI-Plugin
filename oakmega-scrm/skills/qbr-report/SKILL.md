@@ -68,9 +68,8 @@ description: >-
 
 - `broadcast search`
   - 參數：`--start-dt`／`--end-dt`（必填），`--name`（選填），`--limit`（選填，1～100，預設 50，單次最多回傳 100 筆）
-  - 用途：
-    - 好友新增／封鎖排名：日期範圍設為當天，取當日發文 `name`
-    - 發文成效總覽／開封率點擊率排名／發文明細表：本期查一次即可，回傳結果已內建 `line_broadcast_insight`（開封率、點擊率等 LINE 官方數據），不用再逐篇呼叫其他 API 補資料
+  - 用途：好友新增／封鎖排名、發文成效總覽／開封率點擊率排名／發文明細表，全部共用同一組查詢結果
+  - 呼叫方式：只需呼叫「上期」「本期」各一次（`--start-dt`／`--end-dt` 分別設為該期起訖日），回傳結果已內建 `line_broadcast_insight`（開封率、點擊率等 LINE 官方數據），不用再逐篇呼叫其他 API 補資料。好友新增／封鎖排名要用到的「當日發文」，直接從「本期」這次查詢結果中依 `broadcast_dt` 篩出對應日期即可，不用針對每個排名日期再各自呼叫一次（本期範圍內的發文早就在本期這次查詢結果裡了）
 - 總好友數：`statistics get-line-follow-insight`（同上，同一次呼叫） → `followers`（該期期末當下的總好友數快照）
 - 有效（目標）好友數：`statistics get-line-follow-insight`（`--date` 設為該期期末日） → `targetedReaches`
 - 封鎖數：`statistics get-line-follow-insight`（同上，同一次呼叫） → `blocks`（該期期末當下的封鎖總數快照）
@@ -112,19 +111,19 @@ description: >-
 
 #### 好友新增排名（前 10）
 - 排名／新增好友數：`line_join_count` 依數值降冪排序取前 10 個日期
-- 當日發文主題／活動：`broadcast search`（`--start-dt`／`--end-dt` 設為當天） → `name`，同一天有多篇發文時全部列出
+- 當日發文主題／活動：從「本期」`broadcast search` 查詢結果（見「資料撈取一覽」，已查過不用再叫）中依 `broadcast_dt` 篩出對應日期 → `name`，同一天有多篇發文時全部列出，無發文則標示「無發文」
 - 數據小結：依數據小結原則撰寫
 
 #### 好友封鎖排名（前 10）
 - 排名／封鎖好友數：`line_block_count` 依數值降冪排序取前 10 個日期
-- 當日發文主題／活動：同上，`broadcast search` → `name`
+- 當日發文主題／活動：同上，從「本期」`broadcast search` 查詢結果中依 `broadcast_dt` 篩出對應日期 → `name`
 - 數據小結：依數據小結原則撰寫
 
 ---
 
 ### 發布文章成效
 
-以下所有數據都來自同一次「本期」`broadcast search` 查詢結果，不用再逐篇呼叫其他 API 補資料。若某篇的 `line_broadcast_insight` 相關數值為 `null`（尚未產生 R2 資料），該篇不列入對應的平均值計算，也不納入排行榜候選。
+「發文成效總覽」以外的其他小節，數據都來自同一次「本期」`broadcast search` 查詢結果，不用再逐篇呼叫其他 API 補資料。若某篇的 `line_broadcast_insight` 相關數值為 `null`，該篇不列入對應的平均值計算，也不納入排行榜候選。
 
 #### 預覽文字規則（供本節各段落共用）
 - 取 `expanded_message_dict.contents` 最後一則訊息：
@@ -133,12 +132,13 @@ description: >-
   - 該則既非 `TEXT` 也沒有 `alt_text`（`IMAGE`／`VIDEO`／`AUDIO`／`STICKER`／`CHARGE`）：預覽文字＝「傳送了一則{訊息格式}」，`{訊息格式}` 為該 `msg_type` 對應的中文名稱（例如圖片、影片、語音、貼圖）
 
 #### 發文成效總覽
-- 排除測試／草稿：`broadcast search` → `is_draft == false` 且 `status == "published"`（先篩選，後面所有發文相關指標都以篩選後的清單為準）
-- 發文數：篩選後的筆數
-- 平均受眾數：`broadcast search` → `audience_target_count.point` 的平均；`type == "range"`（區間人數）時，取該篇區間的平均值後再納入整體平均
-- 平均開封率：`broadcast search` → `line_broadcast_insight.unique_impression_rate` 的平均（`null` 不列入計算）
-- 平均點擊率：`broadcast search` → `line_broadcast_insight.unique_click_rate` 的平均（`null` 不列入計算）
-- 數據小結：依數據小結原則撰寫
+- 本節需要「上期」「本期」各一組數據做比較（見「前置設定」），分別用「上期」「本期」各自的 `broadcast search` 查詢結果（見「資料撈取一覽」，已查過不用再叫）計算下列四項指標
+- 排除測試／草稿：`broadcast search` → `is_draft == false` 且 `status == "published"`（先篩選，後面所有發文相關指標都以篩選後的清單為準，上期、本期分開篩選）
+- 發文數：篩選後的筆數（上期、本期各自計算）
+- 平均受眾數：`broadcast search` → `audience_target_count.point` 的平均；`type == "range"`（區間人數）時，取該篇區間的平均值後再納入整體平均（上期、本期各自計算）
+- 平均開封率：`broadcast search` → `line_broadcast_insight.unique_impression_rate` 的平均（`null` 不列入計算；上期、本期各自計算）
+- 平均點擊率：`broadcast search` → `line_broadcast_insight.unique_click_rate` 的平均（`null` 不列入計算；上期、本期各自計算）
+- 數據小結：依數據小結原則撰寫（依上期、本期兩組數字的變化撰寫觀察）
 - 文章名稱：若 `name` 無法直觀理解，依上方「預覽文字規則」取得的內容摘要成 15 字內名稱
 
 #### 開封率前 3 文章

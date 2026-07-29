@@ -79,6 +79,20 @@ tag list-member-tags --member-id <id> [--profile <workspace_id>]
 
 # 批次（最多 20 人） → reference/tag-list-members-batch.md
 tag list-members-batch --member-ids <id1,id2,...> [--profile <workspace_id>]
+
+# 依名稱模糊搜尋標籤資料夾 → reference/tag-search-dirs.md
+tag search-dirs [--query <關鍵字>] [--limit <n>] [--profile <workspace_id>]
+
+# 搜尋標籤：--search-by=tag_dir_id 時 --query 為單一資料夾 id（回該資料夾下所有標籤）；
+# --search-by=name 時 --query 為逗號分隔的名稱清單（完全相符，最多 20 個），二者擇一 → reference/tag-search.md
+tag search --search-by <tag_dir_id|name> --query <值> [--limit <n>] [--profile <workspace_id>]
+```
+
+### Advanced Filter
+
+```bash
+# 依名稱模糊搜尋進階篩選（受眾篩選條件） → reference/advanced-filter-search.md
+advanced-filter search [--query <關鍵字>] [--limit <n>] [--profile <workspace_id>]
 ```
 
 ### Broadcast
@@ -167,6 +181,16 @@ statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,..
 
 # 依日期區間取得多筆發文的 6 小時互動數據（區間最長 100 天，預設近 30 天） → reference/statistics-search-broadcast-six-hour-interaction.md
 statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]
+```
+
+### Analytics
+
+```bash
+# 用進階篩選篩出會員後，分析這批會員的標籤分布（不帶 --tag-ids 則回佔比最高前 20 個標籤；每個 workspace 限流每分鐘 1 次） → reference/analytics-analyze-member-tag-distribution.md
+analytics analyze-member-tag-distribution --advanced-filter-id <id> [--tag-ids <id1,id2,...>] [--profile <workspace_id>]
+
+# 用進階篩選篩出會員後，分析這批會員在會員主表欄位上的分布：是否封鎖/真實名稱/信箱/性別/生日/電話/地址（每個 workspace 限流每分鐘 1 次） → reference/analytics-analyze-member-field-distribution.md
+analytics analyze-member-field-distribution --advanced-filter-id <id> [--profile <workspace_id>]
 ```
 
 ---

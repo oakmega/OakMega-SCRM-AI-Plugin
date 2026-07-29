@@ -20,7 +20,8 @@ const https = require('https');
 const { URL } = require('url');
 const { spawn } = require('child_process');
 
-const PRODUCTION_BASE_URL = 'https://agent-api.oakmega.com';
+// const PRODUCTION_BASE_URL = 'https://agent-api.oakmega.com';
+const PRODUCTION_BASE_URL = 'https://oakmega-scrm-be-beta-yidc23zsiq-de.a.run.app';
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'oakmega-scrm');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json');
@@ -1049,6 +1050,166 @@ async function cmdTagListMembersBatch(argv) {
   process.exit(0);
 }
 
+// ---------- 子指令：tag search-dirs ----------
+
+async function cmdTagSearchDirs(argv) {
+  let workspaceId = null;
+  let query = null;
+  let limit = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--query' && argv[i + 1]) query = argv[++i];
+    else if (argv[i] === '--limit' && argv[i + 1]) limit = argv[++i];
+  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+
+  const params = {};
+  if (query) params.query = query;
+  if (limit) params.limit = limit;
+  const qs = new URLSearchParams(params).toString();
+  const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/tag/search-tag-dirs/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try { result = await apiRequest(url, key); } catch (err) { console.error('請求失敗：' + err.message); process.exit(1); }
+  if (result.status !== 200) { console.error(`API 回傳 HTTP ${result.status}：${result.body}`); process.exit(1); }
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：tag search ----------
+
+async function cmdTagSearch(argv) {
+  let workspaceId = null;
+  let searchBy = null;
+  let query = null;
+  let limit = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--search-by' && argv[i + 1]) searchBy = argv[++i];
+    else if (argv[i] === '--query' && argv[i + 1]) query = argv[++i];
+    else if (argv[i] === '--limit' && argv[i + 1]) limit = argv[++i];
+  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+
+  const VALID_SEARCH_BY = ['tag_dir_id', 'name'];
+  if (!searchBy || !VALID_SEARCH_BY.includes(searchBy)) {
+    console.error(`缺少或無效的 --search-by，必須是：${VALID_SEARCH_BY.join(' | ')}`);
+    process.exit(1);
+  }
+  if (!query) {
+    console.error('缺少 --query <值>');
+    process.exit(1);
+  }
+
+  const body = { search_by: searchBy };
+  if (searchBy === 'tag_dir_id') {
+    const tagDirId = parseInt(query, 10);
+    if (isNaN(tagDirId)) { console.error('--search-by=tag_dir_id 時，--query 必須是數字'); process.exit(1); }
+    body.query = tagDirId;
+    if (limit) body.limit = parseInt(limit, 10);
+  } else {
+    const tagNames = query.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+    if (tagNames.length === 0) { console.error('--search-by=name 時，--query 必須包含至少一個名稱'); process.exit(1); }
+    if (tagNames.length > 20) { console.error('--search-by=name 時，--query 最多 20 個名稱'); process.exit(1); }
+    body.query = tagNames;
+  }
+
+  const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/tag/search-tags/`;
+  let result;
+  try { result = await apiPostRequest(url, key, body); } catch (err) { console.error('請求失敗：' + err.message); process.exit(1); }
+  if (result.status !== 200) { console.error(`API 回傳 HTTP ${result.status}：${result.body}`); process.exit(1); }
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：advanced-filter search ----------
+
+async function cmdAdvancedFilterSearch(argv) {
+  let workspaceId = null;
+  let query = null;
+  let limit = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--query' && argv[i + 1]) query = argv[++i];
+    else if (argv[i] === '--limit' && argv[i + 1]) limit = argv[++i];
+  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+
+  const params = {};
+  if (query) params.query = query;
+  if (limit) params.limit = limit;
+  const qs = new URLSearchParams(params).toString();
+  const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/advanced-filter/search-advanced-filters/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try { result = await apiRequest(url, key); } catch (err) { console.error('請求失敗：' + err.message); process.exit(1); }
+  if (result.status !== 200) { console.error(`API 回傳 HTTP ${result.status}：${result.body}`); process.exit(1); }
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：analytics analyze-member-tag-distribution ----------
+
+async function cmdAnalyticsAnalyzeMemberTagDistribution(argv) {
+  let workspaceId = null;
+  let advancedFilterId = null;
+  let tagIdsStr = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--advanced-filter-id' && argv[i + 1]) advancedFilterId = argv[++i];
+    else if (argv[i] === '--tag-ids' && argv[i + 1]) tagIdsStr = argv[++i];
+  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+
+  if (!advancedFilterId) { console.error('缺少 --advanced-filter-id <id>'); process.exit(1); }
+  const advancedFilterIdInt = parseInt(advancedFilterId, 10);
+  if (isNaN(advancedFilterIdInt)) { console.error('--advanced-filter-id 必須是數字'); process.exit(1); }
+
+  const body = { advanced_filter_id: advancedFilterIdInt };
+  if (tagIdsStr) {
+    const tagIds = tagIdsStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+    if (tagIds.length === 0) { console.error('--tag-ids 必須包含至少一個有效數字 ID'); process.exit(1); }
+    body.tag_ids = tagIds;
+  }
+
+  const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/analytics/analyze-member-tag-distribution/`;
+  let result;
+  try { result = await apiPostRequest(url, key, body); } catch (err) { console.error('請求失敗：' + err.message); process.exit(1); }
+  if (result.status !== 200) { console.error(`API 回傳 HTTP ${result.status}：${result.body}`); process.exit(1); }
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：analytics analyze-member-field-distribution ----------
+
+async function cmdAnalyticsAnalyzeMemberFieldDistribution(argv) {
+  let workspaceId = null;
+  let advancedFilterId = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--advanced-filter-id' && argv[i + 1]) advancedFilterId = argv[++i];
+  }
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+
+  if (!advancedFilterId) { console.error('缺少 --advanced-filter-id <id>'); process.exit(1); }
+  const advancedFilterIdInt = parseInt(advancedFilterId, 10);
+  if (isNaN(advancedFilterIdInt)) { console.error('--advanced-filter-id 必須是數字'); process.exit(1); }
+
+  const url = `${getBaseUrl()}/agent-tools/v3/${workspaceId}/analytics/analyze-member-field-distribution/`;
+  let result;
+  try {
+    result = await apiPostRequest(url, key, { advanced_filter_id: advancedFilterIdInt });
+  } catch (err) { console.error('請求失敗：' + err.message); process.exit(1); }
+  if (result.status !== 200) { console.error(`API 回傳 HTTP ${result.status}：${result.body}`); process.exit(1); }
+  console.log(result.body);
+  process.exit(0);
+}
+
 // ---------- 子指令：statistics get-line-follow-insight ----------
 
 async function cmdStatisticsGetLineFollowInsight(argv) {
@@ -1511,6 +1672,14 @@ function printUsage() {
                         [--profile <workspace_id>]
   oakmega-scrm tag list-members-batch --member-ids <id1,id2,...>  批次取得多個 member 的標籤（最多 20 人）
                         [--profile <workspace_id>]
+  oakmega-scrm tag search-dirs [--query <關鍵字>] [--limit <n>]  依名稱模糊搜尋標籤資料夾
+                        [--profile <workspace_id>]
+  oakmega-scrm tag search --search-by <tag_dir_id|name> --query <值>  搜尋標籤
+                        [--limit <n>] [--profile <workspace_id>]      tag_dir_id：query 為單一資料夾 id；name：query 為逗號分隔的名稱清單（完全相符，最多 20 個）
+
+  ── Advanced Filter ──
+  oakmega-scrm advanced-filter search [--query <關鍵字>] [--limit <n>]  依名稱模糊搜尋進階篩選
+                        [--profile <workspace_id>]
 
   ── Broadcast ──
   oakmega-scrm broadcast search --start-dt <YYYY-MM-DD> --end-dt <YYYY-MM-DD>  搜尋發文（含開封/點擊/影片播放數據）
@@ -1565,6 +1734,12 @@ function printUsage() {
   oakmega-scrm statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]  依日期區間取得多筆發文的 6 小時互動數據（預設近 30 天，最長 100 天）
                         [--profile <workspace_id>]
 
+  ── Analytics ──
+  oakmega-scrm analytics analyze-member-tag-distribution --advanced-filter-id <id>  用進階篩選篩出會員後，分析這批會員的標籤分布
+                        [--tag-ids <id1,id2,...>] [--profile <workspace_id>]     不帶 --tag-ids 則回佔比最高前 20 個標籤（每個 workspace 限流每分鐘 1 次）
+  oakmega-scrm analytics analyze-member-field-distribution --advanced-filter-id <id>  用進階篩選篩出會員後，分析這批會員的欄位分布
+                        [--profile <workspace_id>]     封鎖/真實名稱/信箱/生日/電話/地址/性別（每個 workspace 限流每分鐘 1 次）
+
   所有指令均可加 [--profile <workspace_id>] 指定要用哪一組 profile（單次覆蓋，不影響預設）；不帶則使用目前啟用中的 profile。
 
 環境變數：
@@ -1596,6 +1771,11 @@ function main() {
   if (a === 'use-profile') return cmdUseProfile(argv.slice(1));
   if (a === 'tag' && b === 'list-member-tags') return cmdTagListMemberTags(argv.slice(2));
   if (a === 'tag' && b === 'list-members-batch') return cmdTagListMembersBatch(argv.slice(2));
+  if (a === 'tag' && b === 'search-dirs') return cmdTagSearchDirs(argv.slice(2));
+  if (a === 'tag' && b === 'search') return cmdTagSearch(argv.slice(2));
+  if (a === 'advanced-filter' && b === 'search') return cmdAdvancedFilterSearch(argv.slice(2));
+  if (a === 'analytics' && b === 'analyze-member-tag-distribution') return cmdAnalyticsAnalyzeMemberTagDistribution(argv.slice(2));
+  if (a === 'analytics' && b === 'analyze-member-field-distribution') return cmdAnalyticsAnalyzeMemberFieldDistribution(argv.slice(2));
   if (a === 'member' && b === 'search') return cmdMemberSearch(argv.slice(2));
   if (a === 'member' && b === 'get-basic-info') return cmdMemberGetBasicInfo(argv.slice(2));
   if (a === 'member' && b === 'get-channel-line') return cmdMemberGetChannelLine(argv.slice(2));

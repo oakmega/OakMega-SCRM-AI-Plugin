@@ -181,6 +181,15 @@ statistics list-broadcast-six-hour-interaction-batch --broadcast-ids <id1,id2,..
 
 # 依日期區間取得多筆發文的 6 小時互動數據（區間最長 100 天，預設近 30 天） → reference/statistics-search-broadcast-six-hour-interaction.md
 statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]
+
+# 指定標籤在某一天的累積貼標人數（預設今天） → reference/statistics-get-tag-member-count.md
+statistics get-tag-member-count --tag-id <tag_id> [--dt <YYYY-MM-DD>] [--profile <workspace_id>]
+
+# 指定標籤逐日累積貼標人數與當日新增人數（區間最長 100 天，預設近 30 天） → reference/statistics-get-tag-member-count-series.md
+statistics get-tag-member-count-series --tag-id <tag_id> [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
+
+# 指定標籤區間起訖累積人數與淨新增總量（區間最長 100 天，預設近 30 天） → reference/statistics-get-tag-member-count-total.md
+statistics get-tag-member-count-total --tag-id <tag_id> [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]
 ```
 
 ### Analytics

@@ -857,6 +857,144 @@ async function cmdStatisticsGetMemberInteractionCountTotal(argv) {
   process.exit(0);
 }
 
+// ---------- 子指令：statistics get-tag-member-count ----------
+
+async function cmdStatisticsGetTagMemberCount(argv) {
+  let workspaceId = null;
+  let tagId = null;
+  let dt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--tag-id' && argv[i + 1]) tagId = argv[++i];
+    else if (argv[i] === '--dt' && argv[i + 1]) dt = argv[++i];
+  }
+
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+  if (!tagId) { console.error('缺少 --tag-id <tag_id>'); process.exit(1); }
+
+  const params = {};
+  if (dt) params.dt = dt;
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-tag-member-count/${tagId}/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-tag-member-count-series ----------
+
+async function cmdStatisticsGetTagMemberCountSeries(argv) {
+  let workspaceId = null;
+  let tagId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--tag-id' && argv[i + 1]) tagId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+  if (!tagId) { console.error('缺少 --tag-id <tag_id>'); process.exit(1); }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-tag-member-count-series/${tagId}/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
+// ---------- 子指令：statistics get-tag-member-count-total ----------
+
+async function cmdStatisticsGetTagMemberCountTotal(argv) {
+  let workspaceId = null;
+  let tagId = null;
+  let startDt = null;
+  let endDt = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--profile' && argv[i + 1]) workspaceId = argv[++i];
+    else if (argv[i] === '--tag-id' && argv[i + 1]) tagId = argv[++i];
+    else if (argv[i] === '--start-dt' && argv[i + 1]) startDt = argv[++i];
+    else if (argv[i] === '--end-dt' && argv[i + 1]) endDt = argv[++i];
+  }
+
+  workspaceId = resolveWorkspaceId(workspaceId);
+  const key = getApiKeyForProfile(workspaceId);
+  if (!tagId) { console.error('缺少 --tag-id <tag_id>'); process.exit(1); }
+  if ((startDt && !endDt) || (!startDt && endDt)) {
+    console.error('--start-dt 與 --end-dt 需同時提供');
+    process.exit(1);
+  }
+
+  const params = {};
+  if (startDt && endDt) {
+    params.start_dt = startDt;
+    params.end_dt = endDt;
+  }
+
+  const baseUrl = getBaseUrl();
+  const qs = new URLSearchParams(params).toString();
+  const url = `${baseUrl}/agent-tools/v3/${workspaceId}/statistics/get-tag-member-count-total/${tagId}/${qs ? `?${qs}` : ''}`;
+
+  let result;
+  try {
+    result = await apiRequest(url, key);
+  } catch (err) {
+    console.error('請求失敗：' + err.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 200) {
+    console.error(`API 回傳 HTTP ${result.status}：${result.body}`);
+    process.exit(1);
+  }
+
+  console.log(result.body);
+  process.exit(0);
+}
+
 // ---------- 子指令：member get-basic-info ----------
 
 async function cmdMemberGetBasicInfo(argv) {
@@ -1733,6 +1871,12 @@ function printUsage() {
                         [--profile <workspace_id>]
   oakmega-scrm statistics search-broadcast-six-hour-interaction [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>] [--limit <n>]  依日期區間取得多筆發文的 6 小時互動數據（預設近 30 天，最長 100 天）
                         [--profile <workspace_id>]
+  oakmega-scrm statistics get-tag-member-count --tag-id <tag_id> [--dt <YYYY-MM-DD>]  指定標籤在某一天的累積貼標人數（預設今天）
+                        [--profile <workspace_id>]
+  oakmega-scrm statistics get-tag-member-count-series --tag-id <tag_id> [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  指定標籤逐日累積貼標人數與當日新增人數（預設近 30 天，最長 100 天）
+                        [--profile <workspace_id>]
+  oakmega-scrm statistics get-tag-member-count-total --tag-id <tag_id> [--start-dt <YYYY-MM-DD>] [--end-dt <YYYY-MM-DD>]  指定標籤區間起訖累積人數與淨新增總量（預設近 30 天，最長 100 天）
+                        [--profile <workspace_id>]
 
   ── Analytics ──
   oakmega-scrm analytics analyze-member-tag-distribution --advanced-filter-id <id>  用進階篩選篩出會員後，分析這批會員的標籤分布
@@ -1807,6 +1951,9 @@ function main() {
   if (a === 'statistics' && b === 'get-line-follow-insight') return cmdStatisticsGetLineFollowInsight(argv.slice(2));
   if (a === 'statistics' && b === 'list-broadcast-six-hour-interaction-batch') return cmdStatisticsListBroadcastSixHourInteractionBatch(argv.slice(2));
   if (a === 'statistics' && b === 'search-broadcast-six-hour-interaction') return cmdStatisticsSearchBroadcastSixHourInteraction(argv.slice(2));
+  if (a === 'statistics' && b === 'get-tag-member-count') return cmdStatisticsGetTagMemberCount(argv.slice(2));
+  if (a === 'statistics' && b === 'get-tag-member-count-series') return cmdStatisticsGetTagMemberCountSeries(argv.slice(2));
+  if (a === 'statistics' && b === 'get-tag-member-count-total') return cmdStatisticsGetTagMemberCountTotal(argv.slice(2));
 
   console.log(`未知指令：${a}`);
   printUsage();

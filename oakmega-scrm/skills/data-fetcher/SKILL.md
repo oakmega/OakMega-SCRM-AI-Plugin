@@ -198,7 +198,7 @@ statistics get-tag-member-count-total --tag-id <tag_id> [--start-dt <YYYY-MM-DD>
 # 用進階篩選篩出會員後，分析這批會員的標籤分布（不帶 --tag-ids 則回佔比最高前 20 個標籤；每個 workspace 限流每分鐘 1 次） → reference/analytics-analyze-member-tag-distribution.md
 analytics analyze-member-tag-distribution --advanced-filter-id <id> [--tag-ids <id1,id2,...>] [--profile <workspace_id>]
 
-# 用進階篩選篩出會員後，分析這批會員在會員主表欄位上的分布：是否封鎖/真實名稱/信箱/性別/生日/電話/地址（每個 workspace 限流每分鐘 1 次） → reference/analytics-analyze-member-field-distribution.md
+# 用進階篩選篩出會員後，分析這批會員在會員主表欄位上的分布：傳訊狀態/真實名稱/信箱/性別/生日/電話/地址（每個 workspace 限流每分鐘 1 次） → reference/analytics-analyze-member-field-distribution.md
 analytics analyze-member-field-distribution --advanced-filter-id <id> [--profile <workspace_id>]
 ```
 

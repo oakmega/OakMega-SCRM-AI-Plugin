@@ -8,7 +8,7 @@ analytics analyze-member-field-distribution
   --profile <workspace_id>        # [🔯 選填] 指定要用哪一組 profile
 ```
 
-用進階篩選（Advanced Filter）篩出一批會員，分析這批會員在會員主表欄位上的分布：是否封鎖、是否有真實名稱、是否有信箱、性別、是否有生日、是否有電話、是否有地址。每個 workspace 限流每分鐘 1 次。
+用進階篩選（Advanced Filter）篩出一批會員，分析這批會員在會員主表欄位上的分布：傳訊狀態、是否有真實名稱、是否有信箱、性別、是否有生日、是否有電話、是否有地址。每個 workspace 限流每分鐘 1 次。
 
 ### Response `200 OK`
 
@@ -17,10 +17,10 @@ analytics analyze-member-field-distribution
   // 該進階篩選篩出的會員總數，即下方 percentage 的分母
   "matched_member_count": 1000,
   "fields": {
-    // 是否封鎖：無法傳訊（status=false）且有封鎖日期（block_dt 非空）
-    "is_blocked": [
-      {"key": "yes", "count": 120, "percentage": 12.0},
-      {"key": "no", "count": 880, "percentage": 88.0}
+    // 傳訊狀態：available = 至少一個已串接 channel（LINE/FB/IG/WhatsApp）可正常傳訊；unavailable = 全部已封鎖或未串接任何 channel
+    "messaging_status": [
+      {"key": "available", "count": 880, "percentage": 88.0},
+      {"key": "unavailable", "count": 120, "percentage": 12.0}
     ],
     // 是否有真實名稱
     "has_real_name": [

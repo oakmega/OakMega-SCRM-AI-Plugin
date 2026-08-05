@@ -1,6 +1,6 @@
 {
   "name": "oakmega-scrm",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "OakMega SCRM CLI — 本機儲存 API key，操作 SCRM 後台。",
   "bin": {
     "oakmega-scrm": "bin/oakmega-scrm.js"

@@ -1,10 +1,8 @@
 {
   "name": "oakmega",
+  "description": "OakMega 官方 plugin marketplace。",
   "owner": {
     "name": "OakMega"
-  },
-  "metadata": {
-    "description": "OakMega 官方 plugin marketplace。"
   },
   "plugins": [
     {

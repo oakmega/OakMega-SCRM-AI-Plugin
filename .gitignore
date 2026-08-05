@@ -9,3 +9,4 @@ npm-debug.log*
 
 # 本機環境
 *.local
+.in_use/

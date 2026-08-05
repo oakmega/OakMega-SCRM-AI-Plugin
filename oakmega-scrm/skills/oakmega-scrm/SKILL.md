@@ -32,6 +32,16 @@ node "$CLAUDE_PLUGIN_ROOT/bin/oakmega-scrm.js" <command>
 - **永遠不要請使用者把 API key 貼進對話。** key 只能透過 `login` 開啟的本機網頁表單輸入。
 - CLI 會自己從 `~/.config/oakmega-scrm/config.json` 讀 key，你不需要、也不應該接觸 key 全文。CLI 最多只會印出前 10 碼。
 
+## 輸出規則
+
+預設將結果整理成人類可讀格式回覆（摘要、表格、條列等）。
+若呼叫端在 context 中明確指定 `output: json`，改為回傳 CLI 的 raw JSON 原文，不做任何格式轉換。
+不要提到 CLI 的名稱、指令、參數或是 result 的英文命名，要轉化成 OakMega SCRM 使用者能理解的功能名詞。**這條規則適用於你輸出的所有文字**，不只是回報查詢結果時，也包含：說明你正在做什麼、解釋為什麼缺資料、或詢問使用者要不要讓你去查/執行某個動作時。
+
+- 例如不要說「接下來我要查看 member_id 並確認他目前的 LINE 狀態是否為 BLOCKED」，而是要說「接下來我要查看這位會員並確認他的 LINE 是否為封鎖」
+- 例如不要說「要不要幫你去查 statistics get-workspace-member-overview 這個 API,看能不能拿到全 workspace 的封鎖相關數字來做比較?」，而是要說「要不要我幫你查一下全 workspace 的會員概況，抓出封鎖相關的數字來跟這個標籤做比較?」
+- 遇到指令/參數名稱時，先在心裡把它翻譯成對應的業務語言（例如 workspace 會員總覽、封鎖率、標籤名單...）再輸出，不要直接複製指令或參數字面文字。
+
 ## Auth bootstrap（任何操作前都先做）
 
 1. 先檢查登入狀態：
@@ -51,16 +61,28 @@ node "$CLAUDE_PLUGIN_ROOT/bin/oakmega-scrm.js" <command>
 
    這會啟動本機網頁表單並自動開啟瀏覽器。請明確告訴使用者：
 
-   > 請在自動打開的瀏覽器視窗貼上你的 API key 完成設定（若沒自動開，請手動貼上終端機印出的網址）。
+   > 請在自動打開的瀏覽器視窗貼上你的 API key 完成設定（若沒自動開，請手動貼上終端機印出的網址）。可以順便填寫別名，方便之後用客戶名稱切換。
 
 3. 使用者完成後，重跑 `auth status` 確認已登入，再繼續。
 
-## 操作（示意）
+## 新增客戶 / 切換預設 workspace
 
-目前後端操作仍在建置中，先用 `whoami` 驗證整條路是否打通。它會印出已儲存 key 的前 10 碼：
+本機可能同時存有多組 (workspace_id, API key, 別名) 的 profile（一把 API key 只綁定一個 workspace）。依使用者意圖觸發：
 
-```
-node "${CLAUDE_PLUGIN_ROOT}/bin/oakmega-scrm.js" whoami
-```
+- 使用者說「加一個新客戶的 API key」「多綁一組 key」等**新增/更新**意圖 → 呼叫：
+  ```
+  node "${CLAUDE_PLUGIN_ROOT}/bin/oakmega-scrm.js" login
+  ```
+  行為同 Auth bootstrap 的 `login`，會新增一組 profile（若 workspace_id 已存在則視為刷新該組的 key/別名），不會覆蓋其他已存在的 profile。
 
-輸出形如 `API_KEY 前 10 碼：xxxxxxxxxx` 即代表認證流程正常。之後真正的後端操作會以同樣方式新增為 CLI 子指令。
+- 使用者說「以後預設都看 XX」「幫我切換預設 workspace」等**永久切換預設**意圖 → 先視需要呼叫 `list-profiles` 解析出對應的 workspace_id,再呼叫：
+  ```
+  node "${CLAUDE_PLUGIN_ROOT}/bin/oakmega-scrm.js" use-profile <workspace_id>
+  ```
+  這與單純「這次順便查一下另一個客戶」不同——後者屬於單次查詢的 profile 解析,交由 `skills/data-fetcher/SKILL.md` 處理，不應呼叫 `use-profile`。
+
+## 操作
+
+### 拿取資料
+
+一律使用 `skills/data-fetcher/SKILL.md`

@@ -1,6 +1,6 @@
 {
   "name": "oakmega-scrm",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "操作 OakMega SCRM 後台的 Claude Code plugin。內附 CLI，採本機儲存 API key 模式（key 存在 ~/.config/oakmega-scrm/config.json，永不經過對話）。",
   "author": {
     "name": "OakMega"
